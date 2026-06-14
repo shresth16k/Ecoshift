@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EcoShift | Carbon Footprint Challenge</title>
+    <meta name="description" content="EcoShift is an interactive, gamified platform for tracking carbon footprint savings, earning an Eco Score, and taking daily environmental challenges." />
+    <script type="text/javascript">
+      // Fallback global configurations for local development environment
+      if (typeof window.__firebase_config === 'undefined') {
+        window.__firebase_config = JSON.stringify({
+          apiKey: "mock-api-key-for-local-dev-runs",
+          authDomain: "mock-project.firebaseapp.com",
+          projectId: "mock-project",
+          storageBucket: "mock-project.appspot.com",
+          messagingSenderId: "1234567890",
+          appId: "1:1234567890:web:abcdef"
+        });
+      }
+      if (typeof window.__app_id === 'undefined') {
+        window.__app_id = "local-dev-app-id";
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="google_translate_element"></div>
+    <script type="text/javascript">
+      function googleTranslateElementInit() {
+        new google.translate.TranslateElement({pageLanguage: 'en', autoDisplay: false}, 'google_translate_element');
+      }
+    </script>
+    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
