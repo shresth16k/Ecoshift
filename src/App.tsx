@@ -1583,9 +1583,9 @@ function EcoShiftApp() {
   // ------------------------------------------
   const renderPublicHeader = () => {
     return (
-      <header className="w-full h-20 border-b flex items-center justify-between px-6 md:px-12 relative z-20 backdrop-blur-md" style={{ backgroundColor: 'rgba(9, 13, 22, 0.65)', borderColor: 'rgba(255,255,255,0.06)' }}>
+      <header className="w-full h-24 border-b flex items-center justify-between px-6 md:px-12 relative z-20 backdrop-blur-md" style={{ backgroundColor: 'rgba(9, 13, 22, 0.65)', borderColor: 'rgba(255,255,255,0.06)' }}>
         <div className="flex items-center cursor-pointer" onClick={() => setCurrentPage('home')}>
-          <img src="/logo.png" alt="EcoShift Logo" className="h-14 md:h-16 object-contain" />
+          <img src="/logo.png" alt="EcoShift Logo" className="h-18 md:h-20 object-contain" />
         </div>
 
         {/* Center menu */}
@@ -3071,7 +3071,7 @@ function EcoShiftApp() {
         <div className="flex-1 flex flex-col min-h-0">
           <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800/50 shrink-0">
             <div className="flex items-center">
-              <img src="/logo.png" alt="EcoShift Logo" className="h-13 object-contain" />
+              <img src="/logo.png" alt="EcoShift Logo" className="h-16 object-contain" />
             </div>
             <button
               aria-label="Close sidebar menu"
