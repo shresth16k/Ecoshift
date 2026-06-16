@@ -1584,14 +1584,8 @@ function EcoShiftApp() {
   const renderPublicHeader = () => {
     return (
       <header className="w-full h-20 border-b flex items-center justify-between px-6 md:px-12 relative z-20 backdrop-blur-md" style={{ backgroundColor: 'rgba(9, 13, 22, 0.65)', borderColor: 'rgba(255,255,255,0.06)' }}>
-        <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setCurrentPage('home')}>
-          <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-            <Leaf className="text-emerald-450 w-5 h-5 animate-pulse-subtle" />
-          </div>
-          <div className="text-left">
-            <span className="text-lg font-bold tracking-tight text-white block leading-none">EcoShift</span>
-            <span className="text-[9px] text-slate-400 font-bold tracking-wider block mt-1">Shift Today, Sustain Tomorrow</span>
-          </div>
+        <div className="flex items-center cursor-pointer" onClick={() => setCurrentPage('home')}>
+          <img src="/logo.png" alt="EcoShift Logo" className="h-14 md:h-16 object-contain" />
         </div>
 
         {/* Center menu */}
@@ -3075,13 +3069,9 @@ function EcoShiftApp() {
       {/* SIDEBAR FOR DESKTOP */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800/80 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col justify-between`}>
         <div className="flex-1 flex flex-col min-h-0">
-          {/* Sidebar Header / Logo */}
           <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800/50 shrink-0">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-                <Leaf className="text-emerald-455 w-6 h-6 animate-pulse-subtle" />
-              </div>
-              <span className="text-xl font-bold tracking-tight text-white">EcoShift</span>
+            <div className="flex items-center">
+              <img src="/logo.png" alt="EcoShift Logo" className="h-13 object-contain" />
             </div>
             <button
               aria-label="Close sidebar menu"

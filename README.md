@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="public/favicon.svg" width="90" height="90" alt="EcoShift Logo" />
+<img src="public/logo.png" height="90" alt="EcoShift Logo" />
 
 # **EcoShift**
 ### **Gamified B2B & B2C Enterprise Sustainability & Carbon Ledger**
