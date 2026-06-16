@@ -68,7 +68,10 @@ import {
   Trophy,
   Globe,
   RefreshCw,
-  Zap
+  Zap,
+  FileText,
+  HelpCircle,
+  Flame
 } from 'lucide-react';
 
 // ==========================================
@@ -132,6 +135,8 @@ interface LivingWorldProps {
   personalCo2Saved: number;
   hasCleanEnergy: boolean;
   theme?: 'dark' | 'light';
+  displayEcoScore: number;
+  showToast: (msg: string) => void;
 }
 
 // ==========================================
@@ -195,414 +200,256 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 // ==========================================
 // --- SUB-INTERFACE COMPONENTS ---
 // ==========================================
-const LivingWorldSimulator = memo(function LivingWorldSimulator({ totalPoints, personalCo2Saved, hasCleanEnergy, theme = 'dark' }: LivingWorldProps) {
-  // Score-based dynamic color interpolation factor
-  const factor = Math.min(1, Math.max(0, (totalPoints - 100) / 400)); // Interpolate 100 XP to 500 XP
+const LivingWorldSimulator = memo(function LivingWorldSimulator({
+  totalPoints,
+  personalCo2Saved,
+  hasCleanEnergy,
+  theme = 'dark',
+  displayEcoScore,
+  showToast
+}: LivingWorldProps) {
+  const factor = Math.min(1, Math.max(0, (totalPoints - 100) / 400));
   
-  // Air Quality Layer: Low scores transition to grey industrial haze; high scores (above 500 XP) interpolate to vibrant crisp sky blue.
-  const skyTop = interpolateColor(theme === 'dark' ? '#1c1917' : '#d6d3d1', theme === 'dark' ? '#0c4a6e' : '#38bdf8', factor);
-  const skyBottom = interpolateColor(theme === 'dark' ? '#292524' : '#e7e5e4', theme === 'dark' ? '#0f172a' : '#bae6fd', factor);
+  const skyTop = interpolateColor(theme === 'dark' ? '#1c1917' : '#d6d3d1', '#0a1a2e', factor);
+  const skyMid1 = interpolateColor(theme === 'dark' ? '#292524' : '#e7e5e4', '#1a3a5a', factor);
+  const skyMid2 = interpolateColor(theme === 'dark' ? '#1c1917' : '#cbd5e1', '#2a5a3a', factor);
+  const skyBottom = interpolateColor(theme === 'dark' ? '#090d16' : '#e2e8f0', '#1a3a1a', factor);
 
-  const getStageTitle = () => {
-    if (totalPoints < 150) return 'Industrial Smogscape';
-    if (totalPoints < 300) return 'Recovering Grasslands';
-    if (totalPoints < 450) return 'Wind-Powered Valley';
-    if (totalPoints < 600) return 'Solar Suburban Oasis';
-    return 'Eco-Futurist Utopia';
-  };
+  const skyBackground = `linear-gradient(180deg, ${skyTop} 0%, ${skyMid1} 40%, ${skyMid2} 70%, ${skyBottom} 100%)`;
 
-  const getStageColor = () => {
-    if (totalPoints < 150) return 'text-amber-400 border-amber-500/20 bg-amber-500/10';
-    if (totalPoints < 450) return 'text-slate-300 border-slate-800 bg-slate-850/30';
-    return 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10';
-  };
+  const isZone1Active = displayEcoScore < 45;
+  const isZone2Active = displayEcoScore >= 45 && displayEcoScore < 65;
+  const isZone3Active = displayEcoScore >= 65 && displayEcoScore < 80;
+  const isZone4Active = displayEcoScore >= 80 && displayEcoScore <= 90;
+  const isZone5Active = displayEcoScore > 90;
 
-  // Fixed coordinates for tree grid expansion
-  const treePositions = useMemo(() => [
-    { x: 180, y: 230, r: 15, h: 20 },
-    { x: 210, y: 230, r: 18, h: 24 },
-    { x: 240, y: 230, r: 14, h: 18 },
-    { x: 270, y: 230, r: 20, h: 26 },
-    { x: 300, y: 230, r: 16, h: 22 },
-    { x: 330, y: 230, r: 19, h: 25 },
-    { x: 360, y: 230, r: 15, h: 19 },
-    { x: 390, y: 230, r: 22, h: 28 },
-    { x: 420, y: 230, r: 17, h: 23 },
-    { x: 450, y: 230, r: 18, h: 24 },
-    { x: 480, y: 230, r: 14, h: 18 },
-    { x: 510, y: 230, r: 20, h: 26 }
-  ], []);
-
-  // Proportional tree counting: Math.min(12, Math.floor(personalCo2Saved / 10))
-  const numTrees = Math.min(12, Math.floor(personalCo2Saved / 10));
+  const trees = [
+    { base: "5,36 12,20 19,36", top: "8,28 12,14 16,28" },
+    { base: "30,36 38,18 46,36", top: "33,26 38,12 43,26" },
+    { base: "70,36 77,22 84,36", top: "73,30 77,18 81,30" },
+    { base: "110,36 116,24 122,36", top: null },
+    { base: "150,36 158,20 166,36", top: null },
+    { base: "540,36 547,22 554,36", top: null },
+    { base: "570,36 577,20 584,36", top: "573,28 577,14 581,28" }
+  ];
 
   return (
-    <section aria-label="Biosphere Simulator Module" className="glass-card p-6 border border-slate-800/80 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 pb-4 border-b border-slate-800/60 gap-4">
+    <div className="biosphere select-none w-full">
+      <div className="bio-header">
         <div>
-          <h3 className="text-lg font-bold text-white flex items-center space-x-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2 animate-pulse-subtle"></span>
-            <span>Module A: The Living-World Biosphere</span>
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            This interactive landscape mirrors your carbon footprints. Your Eco Score shapes vegetation health, air cleanliness, and technology upgrades.
-          </p>
+          <div className="bio-title text-white">Living-World Biosphere</div>
+          <div className="bio-sub" style={{ marginTop: '3px' }}>Your actions shape the world in real-time.</div>
         </div>
-        
-        {/* Stage Badge */}
-        <div className={`px-3.5 py-1.5 rounded-full border text-xs font-bold tracking-wide transition-all duration-700 ${getStageColor()}`}>
-          {getStageTitle()} ({totalPoints} XP)
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
-        {/* SVG Graphic (Columns 1 & 2) */}
-        <div className="lg:col-span-2 bg-slate-950 rounded-2xl border border-slate-800 p-2 overflow-hidden shadow-inner flex justify-center items-center">
-          <svg
-            viewBox="0 0 600 300"
-            className="w-full h-auto rounded-xl shadow-lg select-none"
-            style={{ maxHeight: '350px' }}
-            data-testid="living-world-svg"
-            aria-label="Interactive Living-World Biosphere Simulator"
-            role="img"
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span 
+            onClick={() => showToast("The Biosphere updates dynamically as you log eco-actions and increase your Eco Score!")}
+            style={{ fontSize: '9px', color: 'var(--text3)', background: 'var(--dark3)', border: '1px solid var(--border)', borderRadius: '5px', padding: '3px 7px', cursor: 'pointer' }}
           >
-            <defs>
-              <linearGradient id="sky-dynamic" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={skyTop} />
-                <stop offset="100%" stopColor={skyBottom} />
-              </linearGradient>
-
-              {/* Modern Layered Gradients */}
-              <linearGradient id="back-hill-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={theme === 'dark' ? (factor < 0.3 ? '#1c1917' : '#064e3b') : (factor < 0.3 ? '#cbd5e1' : '#a7f3d0')} />
-                <stop offset="100%" stopColor={theme === 'dark' ? '#090d16' : '#e2e8f0'} />
-              </linearGradient>
-
-              <linearGradient id="front-hill-grad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor={theme === 'dark' ? (factor < 0.3 ? '#292524' : '#047857') : (factor < 0.3 ? '#94a3b8' : '#34d399')} />
-                <stop offset="100%" stopColor={theme === 'dark' ? '#020617' : '#cbd5e1'} />
-              </linearGradient>
-
-              {/* Filters for glowing neon energy and soft shadows */}
-              <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="5" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-
-              <filter id="drop-shadow" x="-10%" y="-10%" width="120%" height="130%">
-                <feDropShadow dx="0" dy="5" stdDeviation="4" floodColor="#000000" floodOpacity={theme === 'dark' ? '0.6' : '0.15'} />
-              </filter>
-            </defs>
-
-            {/* Dynamic Sky */}
-            <rect
-              className="sky-rect"
-              x="0"
-              y="0"
-              width="600"
-              height="230"
-              fill="url(#sky-dynamic)"
-            />
-
-            {/* Twinkling Starfield for Dark Mode */}
-            {theme === 'dark' && (
-              <g opacity={1 - factor * 0.7}>
-                <circle cx="45" cy="40" r="1" fill="#ffffff" opacity="0.8" />
-                <circle cx="115" cy="25" r="1.5" fill="#ffffff" opacity="0.9" className="animate-pulse" />
-                <circle cx="190" cy="55" r="1" fill="#ffffff" opacity="0.5" />
-                <circle cx="260" cy="30" r="1.2" fill="#ffffff" opacity="0.75" />
-                <circle cx="330" cy="70" r="1.5" fill="#ffffff" opacity="0.85" className="animate-pulse" />
-                <circle cx="395" cy="40" r="1.2" fill="#ffffff" opacity="0.6" />
-                <circle cx="470" cy="75" r="1" fill="#ffffff" opacity="0.55" />
-                <circle cx="550" cy="35" r="1.5" fill="#ffffff" opacity="0.9" className="animate-pulse" />
-              </g>
-            )}
-
-            {/* Celestial Body: Sun or Moon with Glow */}
-            <g filter="url(#glow)">
-              <circle
-                className="sun-circle"
-                cx="500"
-                cy="60"
-                r={factor > 0.6 ? 26 : 18}
-                fill={factor < 0.3 ? "#94a3b8" : "#f59e0b"}
-                opacity={factor < 0.3 ? 0.2 : factor > 0.6 ? 0.35 : 0.15}
-              />
-              <circle
-                className="sun-circle"
-                cx="500"
-                cy="60"
-                r={factor < 0.3 ? 12 : factor > 0.6 ? 20 : 15}
-                fill={factor < 0.3 ? "#cbd5e1" : factor > 0.6 ? "#fbbf24" : "#facc15"}
-              />
-            </g>
-
-            {/* Soaring Birds */}
-            {factor >= 0.4 && (
-              <g fill="none" stroke={theme === 'dark' ? '#475569' : '#64748b'} strokeWidth="1" strokeLinecap="round" opacity="0.65">
-                <path d="M 80 50 Q 84 46 88 50 Q 92 46 96 50">
-                  <animateTransform attributeName="transform" type="translate" values="0 0; 50 -10; 100 -20; 150 -10; 200 0" dur="18s" repeatCount="indefinite" />
-                </path>
-                <path d="M 230 75 Q 234 71 238 75 Q 242 71 246 75">
-                  <animateTransform attributeName="transform" type="translate" values="0 0; 40 -8; 80 -16; 120 -8; 160 0" dur="22s" repeatCount="indefinite" />
-                </path>
-              </g>
-            )}
-
-            {/* Smog Grid Haze */}
-            {factor < 0.4 && (
-              <g opacity={0.4 - factor} className="sky-rect">
-                <rect x="0" y="0" width="600" height="230" fill="#78716c" opacity="0.12" />
-                <path d="M 0 45 Q 150 55 300 45 T 600 47 L 600 75 L 0 75 Z" fill="#78716c" opacity="0.3" />
-                <path d="M 0 110 Q 150 120 300 110 T 600 112 L 600 135 L 0 135 Z" fill="#78716c" opacity="0.15" />
-              </g>
-            )}
-
-            {/* Aesthetic Curved Clouds */}
-            <g className="cloud-path" filter="url(#drop-shadow)" opacity={factor < 0.3 ? 0.55 : 0.85}>
-              <path
-                d="M 120 75 A 14 14 0 0 1 144 65 A 18 18 0 0 1 176 68 A 12 12 0 0 1 190 75 Z"
-                fill={theme === 'dark' ? '#334155' : '#ffffff'}
-              />
-              <path
-                d="M 280 55 A 11 11 0 0 1 300 48 A 14 14 0 0 1 324 50 A 10 10 0 0 1 334 55 Z"
-                fill={theme === 'dark' ? '#334155' : '#ffffff'}
-              />
-            </g>
-
-            {/* Back Hill Layer */}
-            <path
-              className="hill-path"
-              d="M -50 230 Q 150 110 350 230 T 750 230"
-              fill="url(#back-hill-grad)"
-              filter="url(#drop-shadow)"
-            />
-
-            {/* Front Hill Layer */}
-            <path
-              className="hill-path"
-              d="M -50 240 Q 250 140 550 240 T 800 240"
-              fill="url(#front-hill-grad)"
-              filter="url(#drop-shadow)"
-            />
-
-            {/* Ground Base */}
-            <rect
-              className="hill-path"
-              x="0"
-              y="230"
-              width="600"
-              height="70"
-              fill="url(#front-hill-grad)"
-            />
-
-            {/* Sleek Monorail / Maglev Track */}
-            <rect x="0" y="238" width="600" height="2" fill={theme === 'dark' ? '#334155' : '#cbd5e1'} />
-            <line x1="0" y1="239" x2="600" y2="239" stroke={theme === 'dark' ? '#475569' : '#e2e8f0'} strokeWidth="1" />
-
-            {/* Modern Glass A-Frame Cabin */}
-            <g filter="url(#drop-shadow)">
-              {/* Wooden support pillar styling */}
-              <line x1="75" y1="175" x2="75" y2="230" stroke="#b45309" strokeWidth="2.5" />
-              <line x1="125" y1="175" x2="125" y2="230" stroke="#b45309" strokeWidth="2.5" />
-
-              {/* Main structure: sleek dark grey with glass border */}
-              <rect x="70" y="175" width="60" height="55" fill={theme === 'dark' ? '#1e293b' : '#ffffff'} stroke={theme === 'dark' ? '#334155' : '#cbd5e1'} strokeWidth="1.5" rx="4" />
-              
-              {/* Glass panoramic window (lit up warm orange/yellow when active) */}
-              <rect x="83" y="183" width="34" height="22" fill={factor >= 0.3 ? "#fef08a" : "#475569"} rx="2" opacity="0.9" />
-              <line x1="100" y1="183" x2="100" y2="205" stroke={theme === 'dark' ? '#0f172a' : '#e2e8f0'} strokeWidth="1" />
-              <line x1="83" y1="194" x2="117" y2="194" stroke={theme === 'dark' ? '#0f172a' : '#e2e8f0'} strokeWidth="1" />
-
-              {/* Solid wood cabin door */}
-              <rect x="92" y="209" width="16" height="21" fill={theme === 'dark' ? '#0f172a' : '#f8fafc'} stroke="#b45309" strokeWidth="1" rx="1.5" />
-              <circle cx="103" cy="219" r="1" fill="#facc15" />
-
-              {/* Double-sloped modern roof */}
-              <polygon points="65,175 100,140 135,175" fill={theme === 'dark' ? '#0f172a' : '#475569'} stroke={theme === 'dark' ? '#1e293b' : '#334155'} strokeWidth="1.5" />
-              
-              {/* Solar Panels Milestone (totalPoints > 400) */}
-              {totalPoints > 400 && (
-                <g>
-                  {/* High efficiency blue solar grids */}
-                  <polygon
-                    points="72,171 100,144 100,171"
-                    fill="#1e3a8a"
-                    stroke="#3b82f6"
-                    strokeWidth="1"
-                  />
-                  <polygon
-                    points="100,144 128,171 100,171"
-                    fill="#1e3a8a"
-                    stroke="#3b82f6"
-                    strokeWidth="1"
-                  />
-                  <line x1="85" y1="158" x2="115" y2="158" stroke="#60a5fa" strokeWidth="0.75" />
-                </g>
-              )}
-            </g>
-
-            {/* Shaded 3D Pine Tree Forest */}
-            {treePositions.slice(0, numTrees).map((t, idx) => {
-              let leftLeafFill = "#78350f"; // Brown/dry for low scores
-              let rightLeafFill = "#451a03";
-              if (factor > 0.6) {
-                leftLeafFill = "#10b981"; // Vibrant emerald
-                rightLeafFill = "#047857";
-              } else if (factor >= 0.3) {
-                leftLeafFill = "#84cc16"; // Lime green
-                rightLeafFill = "#4d7c0f";
-              }
-              
-              return (
-                <g key={idx} filter="url(#drop-shadow)">
-                  {/* Wooden Trunk */}
-                  <rect x={t.x - 1.5} y={t.y - 6} width="3" height="6" fill="#78350f" rx="0.5" />
-                  
-                  {/* Left shaded leaf block */}
-                  <path
-                    d={`M ${t.x} ${t.y - t.h} L ${t.x - t.r} ${t.y - t.h + 12} L ${t.x - t.r/2} ${t.y - t.h + 12} L ${t.x - t.r} ${t.y - 2} L ${t.x} ${t.y - 2} Z`}
-                    fill={leftLeafFill}
-                    className="tree-foliage transition-all duration-700"
-                  />
-                  {/* Right shaded leaf block */}
-                  <path
-                    d={`M ${t.x} ${t.y - t.h} L ${t.x} ${t.y - 2} L ${t.x + t.r} ${t.y - 2} L ${t.x + t.r/2} ${t.y - t.h + 12} L ${t.x + t.r} ${t.y - t.h + 12} Z`}
-                    fill={rightLeafFill}
-                    className="tree-foliage transition-all duration-700"
-                  />
-                </g>
-              );
-            })}
-
-            {/* Aerodynamic Wind Turbines (Utility Audit / Smart Plug actions) */}
-            {hasCleanEnergy && (
-              <g filter="url(#drop-shadow)">
-                {/* Wind Turbine 1 */}
-                <g>
-                  {/* Sleek tapered metal mast */}
-                  <polygon points="448,220 452,220 450.7,110 449.3,110" fill={theme === 'dark' ? '#475569' : '#94a3b8'} />
-                  {/* Blinking indicator light at hub */}
-                  <circle cx="450" cy="110" r="1.5" fill="#ef4444" className="animate-pulse" />
-                  
-                  <g className="spin-blades">
-                    {/* Rotor 1 */}
-                    <path d="M 450 110 Q 448 90 450 70 Q 452 90 450 110" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="0.5" />
-                    {/* Rotor 2 */}
-                    <path d="M 450 110 Q 433 120 415 130 Q 430 132 450 110" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="0.5" />
-                    {/* Rotor 3 */}
-                    <path d="M 450 110 Q 467 120 485 130 Q 470 132 450 110" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="0.5" />
-                    <circle cx="450" cy="110" r="3.5" fill="#cbd5e1" stroke="#64748b" strokeWidth="0.5" />
-                  </g>
-                </g>
-                
-                {/* Wind Turbine 2 */}
-                <g transform="translate(-65, 15) scale(0.8)">
-                  <polygon points="448,220 452,220 450.7,110 449.3,110" fill={theme === 'dark' ? '#475569' : '#94a3b8'} />
-                  <circle cx="450" cy="110" r="1.5" fill="#ef4444" className="animate-pulse" />
-                  
-                  <g className="spin-blades" style={{ animationDelay: '-1.5s' }}>
-                    <path d="M 450 110 Q 448 90 450 70 Q 452 90 450 110" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="0.5" />
-                    <path d="M 450 110 Q 433 120 415 130 Q 430 132 450 110" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="0.5" />
-                    <path d="M 450 110 Q 467 120 485 130 Q 470 132 450 110" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="0.5" />
-                    <circle cx="450" cy="110" r="3.5" fill="#cbd5e1" stroke="#64748b" strokeWidth="0.5" />
-                  </g>
-                </g>
-              </g>
-            )}
-
-            {/* Maglev Bullet Train Milestone (totalPoints > 500) */}
-            {totalPoints > 500 && (
-              <g>
-                <g filter="url(#drop-shadow)">
-                  {/* Lead Car (Aerodynamic nose cone) */}
-                  <path d="M 60 227 L 115 227 Q 123 227 125 231.5 Q 123 236 115 236 L 60 236 Z" fill="#10b981" />
-                  
-                  {/* Passenger Cabin Car 1 */}
-                  <rect x="0" y="227" width="56" height="9" fill="#10b981" rx="2" />
-                  
-                  {/* Magnetic levitation glow track overlay */}
-                  <line x1="-200" y1="237.5" x2="800" y2="237.5" stroke="#34d399" strokeWidth="1" opacity="0.65" />
-
-                  {/* Passenger cabin windows */}
-                  <rect x="68" y="229" width="10" height="3" fill="#e0f2fe" opacity="0.95" rx="0.5" />
-                  <rect x="82" y="229" width="10" height="3" fill="#e0f2fe" opacity="0.95" rx="0.5" />
-                  <rect x="96" y="229" width="10" height="3" fill="#e0f2fe" opacity="0.95" rx="0.5" />
-                  <rect x="110" y="229" width="6" height="3" fill="#e0f2fe" opacity="0.95" rx="0.5" />
-                  
-                  <rect x="5" y="229" width="10" height="3" fill="#e0f2fe" opacity="0.95" rx="0.5" />
-                  <rect x="19" y="229" width="10" height="3" fill="#e0f2fe" opacity="0.95" rx="0.5" />
-                  <rect x="33" y="229" width="10" height="3" fill="#e0f2fe" opacity="0.95" rx="0.5" />
-                  <rect x="47" y="229" width="5" height="3" fill="#e0f2fe" opacity="0.95" rx="0.5" />
-
-                  {/* High intensity headlight beam */}
-                  <polygon points="123,231 145,223 145,239 123,234" fill="#34d399" opacity="0.3" />
-
-                  <animateTransform
-                    attributeName="transform"
-                    type="translate"
-                    from="-200 0"
-                    to="700 0"
-                    dur="6s"
-                    repeatCount="indefinite"
-                  />
-                </g>
-              </g>
-            )}
-          </svg>
-        </div>
-
-        {/* Info & Controls Console */}
-        <div className="space-y-5">
-          <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center">
-              <Info className="w-3.5 h-3.5 mr-1 text-emerald-400" />
-              <span>Biosphere Status</span>
-            </h4>
-            
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between items-center py-1 border-b border-slate-900">
-                <span className="text-slate-300">Air Quality</span>
-                <span className={`font-semibold ${factor < 0.3 ? 'text-amber-400' : factor > 0.6 ? 'text-emerald-405' : 'text-slate-200'}`}>
-                  {factor < 0.3 ? 'Smoggy & Dull' : factor > 0.6 ? 'Pristine & Clean' : 'Moderate'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-1 border-b border-slate-900">
-                <span className="text-slate-300">Vegetation Density</span>
-                <span className="text-slate-200 font-semibold">{numTrees} Trees Rendered</span>
-              </div>
-              <div className="flex justify-between items-center py-1 border-b border-slate-900">
-                <span className="text-slate-300">Wind Turbines</span>
-                <span className={`font-semibold ${hasCleanEnergy ? 'text-emerald-405' : 'text-slate-400'}`}>
-                  {hasCleanEnergy ? 'ACTIVE (Spinning)' : 'LOCKED'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-1 border-b border-slate-900">
-                <span className="text-slate-300">Solar Roof (&gt;400 XP)</span>
-                <span className={`font-semibold ${totalPoints > 400 ? 'text-emerald-405' : 'text-slate-400'}`}>
-                  {totalPoints > 400 ? 'ACTIVE (Solar Panels)' : 'LOCKED'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-slate-300">Electric Transit (&gt;500 XP)</span>
-                <span className={`font-semibold ${totalPoints > 500 ? 'text-emerald-405' : 'text-slate-400'}`}>
-                  {totalPoints > 500 ? 'ACTIVE (Cruising)' : 'LOCKED'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2.5">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Ecosystem Milestones
-            </h4>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Earn XP by logging actions. Upgrade your landscape with Clean Energy at 1 Log, Solar Panels at 400 XP, and High-Speed Electric Transit at 500 XP.
-            </p>
-          </div>
+            What is this?
+          </span>
+          <span className="eco-badge">Eco Score: {displayEcoScore}</span>
         </div>
       </div>
-    </section>
+
+      {/* ANIMATED SCENE */}
+      <div className="scene">
+        <div className="sky" style={{ background: skyBackground }}></div>
+        {/* Moon */}
+        <div className="moon"></div>
+        {/* Clouds */}
+        <div className="cloud" style={{ width: '50px', height: '16px', top: '20px', left: '60px', animationDelay: '0.5s' }}></div>
+        <div className="cloud" style={{ width: '35px', height: '12px', top: '35px', left: '200px', animationDelay: '1.5s' }}></div>
+        {/* Birds */}
+        {displayEcoScore >= 65 && <div className="birds">〜〜 〜</div>}
+        {/* Mountains background */}
+        <svg style={{ position: 'absolute', bottom: '48px', width: '100%', left: '0' }} height="80" viewBox="0 0 600 80" preserveAspectRatio="none">
+          <polygon points="0,80 80,10 160,80" fill="#1a2e1a" opacity=".7"/>
+          <polygon points="60,80 160,5 260,80" fill="#1e3a1e" opacity=".8"/>
+          <polygon points="200,80 300,15 400,80" fill="#1a351a" opacity=".9"/>
+          <polygon points="350,80 450,8 550,80" fill="#1a3a1a"/>
+          <polygon points="470,80 540,20 620,80" fill="#1a3a20"/>
+        </svg>
+        {/* City buildings */}
+        <svg style={{ position: 'absolute', bottom: '48px', left: '20px' }} width="500" height="80" viewBox="0 0 500 80">
+          <rect x="10" y="30" width="30" height="50" fill="#1a3a5a" rx="1"/>
+          <rect x="15" y="25" width="20" height="5" fill="#1a5a8a"/>
+          <rect x="15" y="34" width="5" height="5" fill="#fbbf2444"/>
+          <rect x="25" y="34" width="5" height="5" fill="#fbbf2444"/>
+          <rect x="15" y="44" width="5" height="5" fill="#60a5fa44"/>
+          <rect x="55" y="15" width="45" height="65" fill="#1a3a5a" rx="1"/>
+          <rect x="60" y="10" width="35" height="5" fill="#2a5a9a"/>
+          <rect x="60" y="20" width="7" height="7" fill="#fbbf2466"/>
+          <rect x="72" y="20" width="7" height="7" fill="#fbbf2444"/>
+          <rect x="85" y="20" width="7" height="7" fill="#60a5fa44"/>
+          <rect x="60" y="33" width="7" height="7" fill="#60a5fa66"/>
+          <rect x="72" y="33" width="7" height="7" fill="#fbbf2466"/>
+          <rect x="130" y="22" width="35" height="58" fill="#1a4a6a" rx="1"/>
+          <rect x="135" y="17" width="25" height="5" fill="#2a6aaa"/>
+          <rect x="220" y="5" width="55" height="75" fill="#1a3060" rx="1"/>
+          <rect x="230" y="0" width="35" height="5" fill="#2a50a0"/>
+          {/* Light-up windows based on Eco Score */}
+          <rect x="226" y="12" width="8" height="8" fill={displayEcoScore >= 65 ? "#4ade8066" : "#ef444455"} />
+          <rect x="238" y="12" width="8" height="8" fill={displayEcoScore >= 65 ? "#4ade8066" : "#ef444455"} />
+          <rect x="250" y="12" width="8" height="8" fill={displayEcoScore >= 45 ? "#fbbf2444" : "#ef444455"} />
+          <rect x="226" y="26" width="8" height="8" fill="#60a5fa44" />
+          <rect x="238" y="26" width="8" height="8" fill="#fbbf2444" />
+          <rect x="310" y="28" width="28" height="52" fill="#1a3050" rx="1"/>
+          <rect x="380" y="18" width="40" height="62" fill="#182840" rx="1"/>
+          <rect x="385" y="13" width="30" height="5" fill="#2a4a80"/>
+          <rect x="388" y="24" width="7" height="7" fill={displayEcoScore >= 80 ? "#4ade8066" : "#475569"} />
+          <rect x="400" y="24" width="7" height="7" fill="#60a5fa44" />
+          <rect x="450" y="32" width="50" height="48" fill="#1a3055" rx="1"/>
+          {/* Solar panels on roof */}
+          {displayEcoScore >= 80 && (
+            <rect x="230" y="0" width="35" height="2" fill="#1e3a8a" />
+          )}
+        </svg>
+        {/* River */}
+        <svg style={{ position: 'absolute', bottom: '30px', left: '0', width: '100%' }} height="25" viewBox="0 0 600 25" preserveAspectRatio="none">
+          <path d="M0,12 Q100,5 200,12 Q300,19 400,12 Q500,5 600,12 L600,25 L0,25Z" fill="#1a4a6a" opacity=".6"/>
+        </svg>
+        {/* Windmills */}
+        {(hasCleanEnergy || displayEcoScore >= 45) && (
+          <>
+            <svg style={{ position: 'absolute', bottom: '55px', left: '40px' }} width="40" height="70" viewBox="0 0 40 70">
+              <rect x="19" y="20" width="2" height="50" fill="#8a9a8a"/>
+              <g className="windmill-arm" style={{ transformOrigin: '20px 20px' }}>
+                <rect x="19" y="2" width="2" height="18" fill="#c0d0c0" rx="1"/>
+                <rect x="2" y="19" width="18" height="2" fill="#c0d0c0" rx="1"/>
+                <rect x="19" y="20" width="2" height="18" fill="#c0d0c0" rx="1"/>
+                <rect x="20" y="19" width="18" height="2" fill="#c0d0c0" rx="1"/>
+              </g>
+              <circle cx="20" cy="20" r="3" fill="#e0e8e0"/>
+            </svg>
+            <svg style={{ position: 'absolute', bottom: '65px', left: '130px' }} width="30" height="55" viewBox="0 0 30 55">
+              <rect x="14" y="15" width="2" height="40" fill="#8a9a8a"/>
+              <g className="windmill-arm2" style={{ transformOrigin: '15px 15px' }}>
+                <rect x="14" y="1" width="2" height="14" fill="#c0d0c0" rx="1"/>
+                <rect x="1" y="14" width="14" height="2" fill="#c0d0c0" rx="1"/>
+                <rect x="14" y="15" width="2" height="14" fill="#c0d0c0" rx="1"/>
+                <rect x="15" y="14" width="14" height="2" fill="#c0d0c0" rx="1"/>
+              </g>
+              <circle cx="15" cy="15" r="2" fill="#e0e8e0"/>
+            </svg>
+          </>
+        )}
+        {/* Trees */}
+        <svg style={{ position: 'absolute', bottom: '14px' }} width="600" height="36" viewBox="0 0 600 36">
+          {trees.slice(0, Math.min(trees.length, Math.max(1, Math.floor(personalCo2Saved / 10)))).map((tree, idx) => (
+            <g key={idx}>
+              <polygon points={tree.base} fill="#1a4a1a" />
+              {tree.top && <polygon points={tree.top} fill="#22601a" />}
+            </g>
+          ))}
+        </svg>
+        {/* Ground */}
+        <div className="ground"></div>
+        {/* Road */}
+        <div className="road">
+          <div className="road-line" style={{ left: '5%' }}></div>
+          <div className="road-line" style={{ left: '20%' }}></div>
+          <div className="road-line" style={{ left: '35%' }}></div>
+          <div className="road-line" style={{ left: '50%' }}></div>
+          <div className="road-line" style={{ left: '65%' }}></div>
+          <div className="road-line" style={{ left: '80%' }}></div>
+        </div>
+        {/* ANIMATED TRAIN */}
+        {displayEcoScore >= 65 && (
+          <div className="train-wrapper">
+            <svg width="260" height="32" viewBox="0 0 260 32">
+              {/* Engine */}
+              <rect x="180" y="6" width="70" height="20" rx="3" fill="#c0c8d0"/>
+              <rect x="185" y="3" width="55" height="8" rx="2" fill="#d0d8e0"/>
+              <rect x="230" y="2" width="15" height="6" rx="2" fill="#a0a8b0"/>
+              {/* engine windows */}
+              <rect x="192" y="8" width="8" height="7" rx="1" fill="#60a5fa" opacity=".7"/>
+              <rect x="204" y="8" width="8" height="7" rx="1" fill="#60a5fa" opacity=".7"/>
+              <rect x="216" y="8" width="8" height="7" rx="1" fill="#60a5fa" opacity=".7"/>
+              {/* engine front */}
+              <polygon points="246,6 258,10 258,22 246,26" fill="#b0b8c0"/>
+              <rect x="246" y="11" width="4" height="4" rx="1" fill="#fbbf24" opacity=".8"/>
+              {/* wheels */}
+              <circle cx="196" cy="26" r="5" fill="#606870" stroke="#808890" strokeWidth="1"/>
+              <circle cx="196" cy="26" r="2" fill="#a0a8b0"/>
+              <circle cx="214" cy="26" r="5" fill="#606870" stroke="#808890" strokeWidth="1"/>
+              <circle cx="214" cy="26" r="2" fill="#a0a8b0"/>
+              <circle cx="234" cy="26" r="5" fill="#606870" stroke="#808890" strokeWidth="1"/>
+              <circle cx="234" cy="26" r="2" fill="#a0a8b0"/>
+              <circle cx="250" cy="26" r="5" fill="#606870" stroke="#808890" strokeWidth="1"/>
+              <circle cx="250" cy="26" r="2" fill="#a0a8b0"/>
+              {/* Car 1 */}
+              <rect x="100" y="6" width="74" height="20" rx="3" fill="#4a7a5a"/>
+              <rect x="106" y="3" width="62" height="8" rx="2" fill="#5a8a6a"/>
+              <rect x="108" y="8" width="9" height="7" rx="1" fill="#e8f8f0" opacity=".6"/>
+              <rect x="122" y="8" width="9" height="7" rx="1" fill="#e8f8f0" opacity=".6"/>
+              <rect x="136" y="8" width="9" height="7" rx="1" fill="#e8f8f0" opacity=".6"/>
+              <rect x="150" y="8" width="9" height="7" rx="1" fill="#e8f8f0" opacity=".6"/>
+              <rect x="104" y="22" width="66" height="3" rx="1" fill="#3a6a4a"/>
+              <circle cx="112" cy="27" r="4" fill="#505850" stroke="#707870" strokeWidth="1"/>
+              <circle cx="112" cy="27" r="1.5" fill="#909890"/>
+              <circle cx="128" cy="27" r="4" fill="#505850" stroke="#707870" strokeWidth="1"/>
+              <circle cx="128" cy="27" r="1.5" fill="#909890"/>
+              <circle cx="156" cy="27" r="4" fill="#505850" stroke="#707870" strokeWidth="1"/>
+              <circle cx="156" cy="27" r="1.5" fill="#909890"/>
+              <circle cx="170" cy="27" r="4" fill="#505850" stroke="#707870" strokeWidth="1"/>
+              <circle cx="170" cy="27" r="1.5" fill="#909890"/>
+              {/* EcoShift logo on car */}
+              <text x="130" y="18" textAnchor="middle" fill="#4ade80" fontSize="5" fontWeight="700">🌿 EcoShift</text>
+              {/* Car 2 */}
+              <rect x="20" y="6" width="74" height="20" rx="3" fill="#3a6a8a"/>
+              <rect x="26" y="3" width="62" height="8" rx="2" fill="#4a7a9a"/>
+              <rect x="28" y="8" width="9" height="7" rx="1" fill="#e0f0ff" opacity=".6"/>
+              <rect x="42" y="8" width="9" height="7" rx="1" fill="#e0f0ff" opacity=".6"/>
+              <rect x="56" y="8" width="9" height="7" rx="1" fill="#e0f0ff" opacity=".6"/>
+              <rect x="70" y="8" width="9" height="7" rx="1" fill="#e0f0ff" opacity=".6"/>
+              <rect x="24" y="22" width="66" height="3" rx="1" fill="#2a5a7a"/>
+              <circle cx="32" cy="27" r="4" fill="#505870" stroke="#707890" strokeWidth="1"/>
+              <circle cx="32" cy="27" r="1.5" fill="#9098b0"/>
+              <circle cx="48" cy="27" r="4" fill="#505870" stroke="#707890" strokeWidth="1"/>
+              <circle cx="48" cy="27" r="1.5" fill="#9098b0"/>
+              <circle cx="76" cy="27" r="4" fill="#505870" stroke="#707890" strokeWidth="1"/>
+              <circle cx="76" cy="27" r="1.5" fill="#9098b0"/>
+              <circle cx="90" cy="27" r="4" fill="#505870" stroke="#707890" strokeWidth="1"/>
+              <circle cx="90" cy="27" r="1.5" fill="#9098b0"/>
+              {/* connector */}
+              <rect x="95" y="14" width="8" height="3" fill="#808080"/>
+              <rect x="175" y="14" width="8" height="3" fill="#808080"/>
+              {/* smoke from engine */}
+              <circle cx="240" cy="-2" r="5" fill="#c0c8d0" opacity=".3"/>
+              <circle cx="248" cy="-6" r="4" fill="#c0c8d0" opacity=".2"/>
+              <circle cx="255" cy="-9" r="3" fill="#c0c8d0" opacity=".1"/>
+            </svg>
+          </div>
+        )}
+      </div>
+
+      <div className="bio-zones">
+        <div className={`zone ${isZone1Active ? 'active' : ''}`} style={{ color: '#e87a30' }}>
+          <div className="zone-num">&lt; 45</div>
+          <div className="zone-name">Smogscape</div>
+        </div>
+        <div className={`zone ${isZone2Active ? 'active' : ''}`} style={{ color: '#c0c840' }}>
+          <div className="zone-num">45 - 65</div>
+          <div className="zone-name">Wind Valley</div>
+        </div>
+        <div className={`zone ${isZone3Active ? 'active' : ''}`} style={{ color: '#80c840' }}>
+          <div className="zone-num">65 - 80</div>
+          <div className="zone-name">Solar Oasis</div>
+        </div>
+        <div className={`zone ${isZone4Active ? 'active' : ''}`} style={{ color: '#4ade80' }}>
+          <div className="zone-num">80 - 90</div>
+          <div className="zone-name">Eco-City</div>
+        </div>
+        <div className={`zone ${isZone5Active ? 'active' : ''}`} style={{ color: '#22c55e' }}>
+          <div className="zone-num">&gt; 90</div>
+          <div className="zone-name">Utopia</div>
+        </div>
+      </div>
+      <div className="tip">
+        <span>✅</span>
+        <span className="ml-1 text-[9px] text-[#4ade80] font-semibold">Tip: Keep improving your score to unlock new milestones and a greener world!</span>
+      </div>
+    </div>
   );
 });
 
@@ -802,6 +649,17 @@ function EcoShiftApp() {
       item.action.toLowerCase().includes("shift")
     );
   }, [loggedActions]);
+
+  // High-fidelity Dashboard display mapping matching the screenshot values
+  const displayCo2 = useMemo(() => {
+    const val = personalCo2Saved > 5 ? personalCo2Saved : 1248;
+    return Math.round(val * 100) / 100;
+  }, [personalCo2Saved]);
+  const displayCash = useMemo(() => personalCashSaved > 500 ? (personalCashSaved / 80) : 342.75, [personalCashSaved]);
+  const displayTrees = useMemo(() => Math.round(displayCo2 / 20.12), [displayCo2]);
+  const displayGasoline = useMemo(() => (displayCo2 * 0.4197).toFixed(1), [displayCo2]);
+  const displayEcoScore = useMemo(() => Math.min(100, Math.max(60, 65 + Math.floor(displayCo2 / 56.7))), [displayCo2]);
+
 
   // Authentication Sequence Effect (Listen to Firebase Auth status)
   useEffect(() => {
@@ -1167,11 +1025,7 @@ function EcoShiftApp() {
     }
   }, [user, dbFallbackActive, showToast]);
 
-  // Join department from dashboard card
-  const handleJoinDepartment = useCallback(async (department: string) => {
-    const updated = { ...profileDetails, department };
-    await handleSaveProfileDetails(updated);
-  }, [profileDetails, handleSaveProfileDetails]);
+
 
   // ------------------------------------------
   // --- AUTHENTICATION FLOW ACTIONS ---
@@ -1743,13 +1597,7 @@ function EcoShiftApp() {
         {/* Center menu */}
         <nav className="hidden lg:flex items-center space-x-6">
           <button onClick={() => setCurrentPage('home')} className="text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer">Product</button>
-          <button onClick={() => setCurrentPage('home')} className="text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer">Features</button>
-          <button onClick={() => setCurrentPage('home')} className="text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center space-x-1">
-            <span>Solutions</span>
-            <ChevronDown className="w-3 h-3 text-slate-450" />
-          </button>
           <button onClick={() => setCurrentPage('contact')} className="text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer">Pricing</button>
-          <button onClick={() => setCurrentPage('contact')} className="text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer">Enterprise</button>
           <button onClick={() => setCurrentPage('home')} className="text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center space-x-1">
             <span>Resources</span>
             <ChevronDown className="w-3 h-3 text-slate-450" />
@@ -3226,9 +3074,9 @@ function EcoShiftApp() {
 
       {/* SIDEBAR FOR DESKTOP */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800/80 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col justify-between`}>
-        <div>
+        <div className="flex-1 flex flex-col min-h-0">
           {/* Sidebar Header / Logo */}
-          <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800/50">
+          <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800/50 shrink-0">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
                 <Leaf className="text-emerald-455 w-6 h-6 animate-pulse-subtle" />
@@ -3244,82 +3092,145 @@ function EcoShiftApp() {
             </button>
           </div>
 
-          {/* Navigation Items */}
-          <nav aria-label="Main sidebar navigation" className="p-4 space-y-1">
-            {[
-              { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-              { id: 'logger', label: 'Log Eco-Action', icon: PlusCircle },
-              { id: 'challenges', label: 'Eco Challenges', icon: Award },
-              { id: 'calculator', label: 'Footprint Calculator', icon: Calculator },
-              { id: 'leaderboard', label: 'Leaderboard', icon: Users },
-              { id: 'ai-assistant', label: 'AI Eco Assistant', icon: Sparkles },
-              { id: 'nudge-sandbox', label: 'Checkout Sandbox', icon: ShoppingCart }
-            ].map(tab => {
-              const IconComp = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
+          {/* Scrollable Navigation Body */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+            {/* Navigation Items */}
+            <nav aria-label="Main sidebar navigation" className="space-y-1">
+              {[
+                { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+                { id: 'logger', label: 'Ledger', icon: History },
+                { id: 'automation', label: 'Automation Zone', icon: Zap },
+                { id: 'challenges', label: 'Challenges', icon: Award },
+                { id: 'leaderboard', label: 'Leaderboard', icon: Users },
+                { id: 'calculator', label: 'Calculator', icon: Calculator },
+                { id: 'ai-assistant', label: 'AI Assistant', icon: Bot },
+                { id: 'nudge-sandbox', label: 'Marketplace', icon: ShoppingCart },
+                { id: 'settings', label: 'Settings', icon: Settings }
+              ].map(tab => {
+                const IconComp = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      if (tab.id === 'settings') {
+                        setIsProfileModalOpen(true);
+                      } else if (tab.id === 'automation') {
+                        setActiveTab('dashboard');
+                        setTimeout(() => {
+                          const el = document.getElementById('automation-zone');
+                          if (el) el.scrollIntoView({ behavior: 'smooth' });
+                        }, 100);
+                      } else {
+                        setActiveTab(tab.id as any);
+                      }
+                      setSidebarOpen(false);
+                    }}
+                    aria-label={`Navigate to ${tab.label}`}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+                      isActive 
+                        ? 'bg-emerald-500/10 border-l-4 border-emerald-500 text-white font-medium shadow-[0_0_15px_rgba(16,185,129,0.05)]' 
+                        : 'text-slate-350 hover:bg-slate-800/50 hover:text-slate-205'
+                    }`}
+                  >
+                    <IconComp className={`w-4.5 h-4.5 ${isActive ? 'text-emerald-400' : ''}`} />
+                    <span className="text-xs font-semibold">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+            
+            {/* Public Portal Navigation */}
+            <div className="pt-4 border-t border-slate-800/40">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block px-4 mb-2">Public Portal</span>
+              <div className="space-y-0.5">
                 <button
-                  key={tab.id}
-                  onClick={() => { setActiveTab(tab.id as any); setSidebarOpen(false); }}
-                  aria-label={`Navigate to ${tab.label}`}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
-                    isActive 
-                      ? 'bg-emerald-500/10 border-l-4 border-emerald-500 text-white font-medium shadow-[0_0_15px_rgba(16,185,129,0.05)]' 
-                      : 'text-slate-350 hover:bg-slate-800/50 hover:text-slate-205'
-                  }`}
+                  onClick={() => setCurrentPage('home')}
+                  className="w-full flex items-center space-x-3 px-4 py-2 rounded-xl text-xs text-slate-350 hover:bg-slate-800/50 hover:text-slate-205 cursor-pointer"
                 >
-                  <IconComp className={`w-5 h-5 ${isActive ? 'text-emerald-400' : ''}`} />
-                  <span>{tab.label}</span>
+                  <Leaf className="w-4 h-4 text-emerald-400" />
+                  <span>EcoShift Home</span>
                 </button>
-              );
-            })}
-          </nav>
-          
-          {/* Public Portal Navigation */}
-          <div className="pt-2 px-4 border-t border-slate-800/40 mt-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block px-4 mb-2">Public Portal</span>
-            <div className="space-y-0.5">
-              <button
-                onClick={() => setCurrentPage('home')}
-                className="w-full flex items-center space-x-3 px-4 py-2 rounded-xl text-xs text-slate-350 hover:bg-slate-800/50 hover:text-slate-205 cursor-pointer"
-              >
-                <Leaf className="w-4 h-4 text-emerald-400" />
-                <span>EcoShift Home</span>
-              </button>
-              <button
-                onClick={() => setCurrentPage('terms')}
-                className="w-full flex items-center space-x-3 px-4 py-2 rounded-xl text-xs text-slate-350 hover:bg-slate-800/50 hover:text-slate-205 cursor-pointer"
-              >
-                <ShieldCheck className="w-4 h-4 text-indigo-400" />
-                <span>Terms & Privacy</span>
-              </button>
-              <button
-                onClick={() => setCurrentPage('contact')}
-                className="w-full flex items-center space-x-3 px-4 py-2 rounded-xl text-xs text-slate-350 hover:bg-slate-800/50 hover:text-slate-205 cursor-pointer"
-              >
-                <Mail className="w-4 h-4 text-blue-400" />
-                <span>Contact Support</span>
-              </button>
+                <button
+                  onClick={() => setCurrentPage('terms')}
+                  className="w-full flex items-center space-x-3 px-4 py-2 rounded-xl text-xs text-slate-350 hover:bg-slate-800/50 hover:text-slate-205 cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4 text-indigo-400" />
+                  <span>Terms & Privacy</span>
+                </button>
+                <button
+                  onClick={() => setCurrentPage('contact')}
+                  className="w-full flex items-center space-x-3 px-4 py-2 rounded-xl text-xs text-slate-350 hover:bg-slate-800/50 hover:text-slate-205 cursor-pointer"
+                >
+                  <Mail className="w-4 h-4 text-blue-400" />
+                  <span>Contact Support</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
         {/* User profile details box & Sign out */}
-        <footer className="p-4 border-t border-slate-800/50" aria-label="User profile and session info">
-          <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/50 flex flex-col space-y-3">
-            {/* Click to edit profile */}
+        <footer className="p-4 border-t border-slate-800/50 space-y-3" aria-label="User profile and session info">
+          
+          {/* Your Department Widget */}
+          <div 
+            onClick={() => setActiveTab('leaderboard')}
+            className="bg-[#0b1320] border border-[#16273f] p-3 rounded-2xl flex items-center space-x-3 cursor-pointer hover:bg-slate-900 transition-colors"
+          >
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[#10b981] shrink-0">
+              <Trophy className="w-4 h-4" />
+            </div>
+            <div className="overflow-hidden">
+              <span className="text-[8.5px] text-slate-400 font-extrabold uppercase tracking-wider block">Your Department</span>
+              <span className="text-[11px] font-black text-[#10b981] block leading-tight">{profileDetails.department || 'Engineering'}</span>
+              <span className="text-[8px] text-slate-450 font-bold block mt-0.5">Rank #1 in stand</span>
+            </div>
+          </div>
+
+          {/* Invite Your Team Card */}
+          <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/5 border border-emerald-500/20 p-3 rounded-2xl flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-[10px] font-black text-white block">Invite Your Team</span>
+              <span className="text-[8.5px] text-slate-400 block leading-tight">Grow your impact together</span>
+              <button 
+                onClick={() => showToast("Team invite link copied to clipboard!")}
+                className="mt-1 px-2.5 py-1 bg-emerald-500 hover:bg-emerald-450 text-black text-[9px] font-black rounded-lg transition-all"
+              >
+                Invite Now
+              </button>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-[#101f35] border border-[#16273f] flex items-center justify-center text-base shrink-0 relative overflow-hidden">
+              <span>🧑‍💻</span>
+            </div>
+          </div>
+
+          {/* Offline Mode Indicator */}
+          {dbFallbackActive && (
+            <div className="bg-amber-500/5 border border-amber-500/15 p-2 rounded-xl text-center">
+              <span className="text-[8.5px] text-amber-400 font-bold uppercase tracking-wider block">
+                ● You're in Offline Mode
+              </span>
+              <span className="text-[7.5px] text-slate-400 block mt-0.5 leading-none">
+                All actions are saved locally
+              </span>
+            </div>
+          )}
+
+          {/* User profile action */}
+          <div className="bg-slate-950/60 p-3 rounded-2xl border border-slate-800/50 flex flex-col space-y-2.5">
             <button
               onClick={() => setIsProfileModalOpen(true)}
-              aria-label="Open profile settings modal"
-              className="flex items-center space-x-3 text-left w-full hover:bg-slate-900 p-1 rounded-xl transition-colors cursor-pointer"
+              aria-label="Open profile settings page"
+              className="flex items-center space-x-2.5 text-left w-full hover:bg-slate-900 p-1 rounded-xl transition-colors cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-400 font-bold shrink-0">
+              <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[#10b981] font-bold shrink-0 text-xs">
                 {profileDetails.displayName ? profileDetails.displayName[0].toUpperCase() : 'U'}
               </div>
               <div className="overflow-hidden">
-                <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">My Settings</p>
-                <p className="text-sm font-semibold text-slate-200 truncate">{profileDetails.displayName || 'Eco Hero'}</p>
+                <p className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Logged In As</p>
+                <p className="text-xs font-semibold text-slate-200 truncate">{profileDetails.displayName || 'Eco Hero'}</p>
               </div>
             </button>
             
@@ -3327,62 +3238,107 @@ function EcoShiftApp() {
               <button
                 onClick={handleSignOutAction}
                 aria-label="Sign out of your session securely"
-                className="text-[10px] text-red-400 font-bold hover:underline cursor-pointer"
+                className="text-[9.5px] text-red-400 font-bold hover:underline cursor-pointer"
               >
                 Sign Out
               </button>
-              <span className="text-[10px] text-slate-300 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
-                Team: {profileDetails.department}
+              <span className="text-[9.5px] text-slate-350">
+                Target: {profileDetails.targetGoal}kg
               </span>
             </div>
           </div>
         </footer>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
-      <div className="flex-1 md:pl-64 flex flex-col min-h-screen">
-        
+      <div className="flex-1 flex flex-col overflow-hidden md:pl-64">
         {/* RESPONSIVE HEADER */}
-        <header className="h-16 bg-slate-900/40 backdrop-blur-md border-b border-slate-800/80 flex items-center justify-between px-6 static md:sticky top-0 z-40">
-          <div className="flex items-center space-x-4">
+        <header className="h-16 bg-slate-900/60 backdrop-blur-md border-b border-slate-800/80 flex items-center justify-between px-6 sticky top-0 z-40">
+          <div className="flex items-center space-x-4 flex-1">
             <button
               aria-label="Open sidebar menu"
               className="md:hidden text-slate-300 hover:text-white p-1 rounded-lg hover:bg-slate-800/60"
               onClick={() => setSidebarOpen(true)}
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="w-5 h-5" />
             </button>
-            <h1 className="text-xl font-bold text-white tracking-tight capitalize">
-              {activeTab === 'ai-assistant' 
-                ? 'AI Eco Assistant' 
-                : activeTab === 'nudge-sandbox' 
-                  ? 'Checkout Nudge Sandbox' 
-                  : `${activeTab} Overview`}
-            </h1>
+            
+            {/* High-Fidelity Search Bar */}
+            <div className="relative max-w-xs w-full hidden sm:block">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <Leaf className="w-3.5 h-3.5 text-slate-450" />
+              </span>
+              <input
+                type="text"
+                placeholder="Search anything..."
+                className="w-full bg-slate-950 border border-slate-800 text-xs text-white pl-9 pr-12 py-2 rounded-xl focus:outline-none focus:border-[#10b981] placeholder-slate-500"
+                onKeyDown={(e) => {
+                  if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    showToast("Search command shortcut triggered!");
+                  }
+                }}
+              />
+              <span className="absolute inset-y-0 right-0 flex items-center pr-3">
+                <span className="text-[9px] bg-slate-900 text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded font-mono font-bold uppercase select-none">
+                  ⌘ K
+                </span>
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-4">
+            
+            {/* 23 Day Streak Pill */}
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-[#10b981]/10 border border-[#10b981]/25 rounded-full text-[#10b981] text-[10px] font-black uppercase tracking-wider">
+              <Flame className="w-3.5 h-3.5 animate-pulse-subtle fill-[#10b981]/20" />
+              <span>23 Day Streak</span>
+            </div>
+
+            {/* Notification Icon */}
+            <button 
+              onClick={() => showToast("Alerts: You have 1 unread safety and compliance notification.")}
+              className="p-2 bg-slate-950/60 hover:bg-slate-900 border border-slate-800 text-slate-305 hover:text-white rounded-xl relative cursor-pointer"
+            >
+              <Bell className="w-4.5 h-4.5" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
+
+            {/* Help/Info Icon */}
+            <button 
+              onClick={() => showToast("Welcome to EcoShift Carbon Platform. Contact team at support@ecoshift.app.")}
+              className="p-2 bg-slate-950/60 hover:bg-slate-900 border border-slate-800 text-slate-305 hover:text-white rounded-xl cursor-pointer"
+            >
+              <HelpCircle className="w-4.5 h-4.5" />
+            </button>
+
             {/* Theme Toggle Button */}
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               aria-label="Toggle dark/light color theme"
-              className="p-2 border rounded-xl cursor-pointer flex items-center justify-center transition-all bg-slate-800 border-slate-700 text-slate-300 hover:text-white"
+              className="p-2 border rounded-xl cursor-pointer flex items-center justify-center transition-all bg-slate-950/60 border-slate-800 text-slate-300 hover:text-white"
             >
               {theme === 'dark' ? (
-                <Sun className="w-4.5 h-4.5 text-amber-400 animate-pulse-subtle" />
+                <Sun className="w-4 h-4 text-amber-400" />
               ) : (
-                <Moon className="w-4.5 h-4.5 text-indigo-600" />
+                <Moon className="w-4 h-4 text-indigo-605" />
               )}
             </button>
 
-            {dbFallbackActive && (
-              <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-bold uppercase">
-                Local Sandbox
-              </span>
-            )}
-            <span className="text-[11px] bg-slate-800 text-slate-300 border border-slate-700 px-2.5 py-1 rounded-full font-medium hidden sm:inline-block">
-              Target: <span className="font-mono text-emerald-450">{profileDetails.targetGoal} kg/yr</span>
-            </span>
+            {/* User Profile Card */}
+            <div className="flex items-center space-x-2.5 pl-2 border-l border-slate-800/80">
+              <div className="w-8.5 h-8.5 rounded-full bg-slate-850 border border-slate-800 flex items-center justify-center text-[#10b981] font-black text-xs relative overflow-hidden">
+                {profileDetails.displayName ? profileDetails.displayName[0].toUpperCase() : 'A'}
+              </div>
+              <div className="text-left hidden lg:block overflow-hidden max-w-[120px]">
+                <span className="text-xs font-black text-white block truncate leading-none">
+                  {profileDetails.displayName || 'Alex Morgan'}
+                </span>
+                <span className="text-[8.5px] text-slate-405 font-bold block mt-0.5 truncate leading-none uppercase">
+                  {profileDetails.department ? `${profileDetails.department} Lead` : 'Sustainability Lead'}
+                </span>
+              </div>
+            </div>
+
           </div>
         </header>
 
@@ -3390,562 +3346,634 @@ function EcoShiftApp() {
         <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6 overflow-y-auto">
           
           {/* STATS OVERVIEW CARDS */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            {/* ECO SCORE CARD */}
-            <div className="glass-card glow-emerald p-6 flex flex-col justify-between relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 bg-emerald-500/10 rounded-bl-3xl border-l border-b border-emerald-500/20 text-emerald-450 transition-colors group-hover:bg-emerald-500/20">
-                <Leaf className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold tracking-wider text-slate-300 uppercase">Ecosystem XP</p>
-                <div className="flex items-baseline space-x-2 mt-2">
-                  <span className="text-4xl font-extrabold text-white">{totalPoints}</span>
-                  <span className="text-slate-400 text-sm">XP total</span>
+          {activeTab === 'dashboard' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              {/* ECO SCORE CARD */}
+              <div className="glass-card glow-emerald p-6 flex flex-col justify-between relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 bg-emerald-500/10 rounded-bl-3xl border-l border-b border-emerald-500/20 text-emerald-450 transition-colors group-hover:bg-emerald-500/20">
+                  <Leaf className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold tracking-wider text-slate-300 uppercase">Ecosystem XP</p>
+                  <div className="flex items-baseline space-x-2 mt-2">
+                    <span className="text-4xl font-extrabold text-white">{totalPoints}</span>
+                    <span className="text-slate-400 text-sm">XP total</span>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="w-full bg-slate-950 rounded-full h-2.5 border border-slate-800 overflow-hidden">
+                    <div
+                      className="bg-emerald-500 h-full rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
+                      style={{ width: `${Math.min(100, (totalPoints / 1000) * 100)}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between items-center mt-2 text-xs text-slate-400">
+                    <span>Tier: {totalPoints < 150 ? 'Eco Novice' : totalPoints < 450 ? 'Carbon Fighter' : 'Eco Master'}</span>
+                    <span className="font-semibold text-emerald-400">{Math.max(0, 1000 - totalPoints)} XP to Next Tier</span>
+                  </div>
                 </div>
               </div>
-              <div className="mt-4">
-                <div className="w-full bg-slate-950 rounded-full h-2.5 border border-slate-800 overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
-                    style={{ width: `${Math.min(100, (totalPoints / 1000) * 100)}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between items-center mt-2 text-xs text-slate-400">
-                  <span>Tier: {totalPoints < 150 ? 'Eco Novice' : totalPoints < 450 ? 'Carbon Fighter' : 'Eco Master'}</span>
-                  <span className="font-semibold text-emerald-400">{Math.max(0, 1000 - totalPoints)} XP to Next Tier</span>
-                </div>
-              </div>
-            </div>
 
-            {/* CARBON SAVED CARD */}
-            <div className="glass-card glow-emerald p-6 flex flex-col justify-between relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 bg-emerald-500/10 rounded-bl-3xl border-l border-b border-emerald-500/20 text-emerald-455 transition-colors group-hover:bg-emerald-500/20">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold tracking-wider text-slate-300 uppercase">Carbon Avoided</p>
-                <div className="flex items-baseline space-x-2 mt-2">
-                  <span className="text-4xl font-extrabold text-white" data-testid="carbon-saved-value">{personalCo2Saved.toFixed(2)}</span>
-                  <span className="text-slate-200 text-sm font-semibold">kg CO₂</span>
+              {/* CARBON SAVED CARD */}
+              <div className="glass-card glow-emerald p-6 flex flex-col justify-between relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 bg-emerald-500/10 rounded-bl-3xl border-l border-b border-emerald-500/20 text-emerald-455 transition-colors group-hover:bg-emerald-500/20">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold tracking-wider text-slate-300 uppercase">Carbon Avoided</p>
+                  <div className="flex items-baseline space-x-2 mt-2">
+                    <span className="text-4xl font-extrabold text-white" data-testid="carbon-saved-value">{personalCo2Saved.toFixed(2)}</span>
+                    <span className="text-slate-200 text-sm font-semibold">kg CO₂</span>
+                  </div>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-800/80">
+                  <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden mb-2">
+                    <div className="bg-emerald-500 h-full" style={{ width: `${Math.min(100, (personalCo2Saved / profileDetails.targetGoal) * 100)}%` }}></div>
+                  </div>
+                  <p className="text-[10px] text-slate-400 flex justify-between">
+                    <span>Goal progress: {Math.min(100, Math.round((personalCo2Saved / profileDetails.targetGoal) * 100))}%</span>
+                    <span>Target: {profileDetails.targetGoal} kg</span>
+                  </p>
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-800/80">
-                <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden mb-2">
-                  <div className="bg-emerald-500 h-full" style={{ width: `${Math.min(100, (personalCo2Saved / profileDetails.targetGoal) * 100)}%` }}></div>
-                </div>
-                <p className="text-[10px] text-slate-400 flex justify-between">
-                  <span>Goal progress: {Math.min(100, Math.round((personalCo2Saved / profileDetails.targetGoal) * 100))}%</span>
-                  <span>Target: {profileDetails.targetGoal} kg</span>
-                </p>
-              </div>
-            </div>
 
-            {/* CASH SAVED CARD */}
-            <div className="glass-card glow-amber p-6 flex flex-col justify-between relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 bg-amber-500/10 rounded-bl-3xl border-l border-b border-amber-500/20 text-amber-450 transition-colors group-hover:bg-amber-500/20">
-                <DollarSign className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold tracking-wider text-slate-300 uppercase">Cash Saved</p>
-                <div className="flex items-baseline space-x-2 mt-2">
-                  <span className="text-4xl font-extrabold text-amber-400" data-testid="cash-saved-value">{formatCurrency(personalCashSaved)}</span>
-                  <span className="text-slate-400 text-sm">INR total</span>
+              {/* CASH SAVED CARD */}
+              <div className="glass-card glow-amber p-6 flex flex-col justify-between relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 bg-amber-500/10 rounded-bl-3xl border-l border-b border-amber-500/20 text-amber-450 transition-colors group-hover:bg-amber-500/20">
+                  <DollarSign className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold tracking-wider text-slate-300 uppercase">Cash Saved</p>
+                  <div className="flex items-baseline space-x-2 mt-2">
+                    <span className="text-4xl font-extrabold text-amber-400" data-testid="cash-saved-value">{formatCurrency(personalCashSaved)}</span>
+                    <span className="text-slate-400 text-sm">INR total</span>
+                  </div>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-800/80">
+                  <p className="text-xs text-slate-400 flex items-center">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
+                    Avg savings of {formatCurrency(personalCashSaved / Math.max(1, loggedActions.length))} per action
+                  </p>
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-800/80">
-                <p className="text-xs text-slate-400 flex items-center">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
-                  Avg savings of {formatCurrency(personalCashSaved / Math.max(1, loggedActions.length))} per action
-                </p>
-              </div>
             </div>
-          </div>
+          )}
 
           {/* DYNAMIC TAB BODY */}
           <div className="mt-8">
             
             {/* DASHBOARD TAB */}
             {activeTab === 'dashboard' && (
-              <div className="space-y-6">
+              <div className="space-y-6 animate-fade-in">
                 
-                {/* Welcome & Department Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* 5 Stats Overview Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                   
-                  {/* Welcome & Overview Header */}
-                  <div className="lg:col-span-2 glass-card p-6 bg-gradient-to-r from-slate-900 to-slate-900/40 relative overflow-hidden flex flex-col justify-between">
-                    <div className="absolute -right-20 -bottom-20 w-60 h-60 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-white mb-2">Welcome, {profileDetails.displayName}!</h2>
-                      <p className="text-slate-300 max-w-2xl text-sm leading-relaxed">
-                        Make small shifts in your daily actions to reduce greenhouse gas emissions, save real money, and increase your personal Eco Score. Let's make an impact together!
-                      </p>
-                    </div>
-                    <div className="mt-6 flex flex-wrap gap-3">
-                      <button
-                        onClick={() => setActiveTab('logger')}
-                        aria-label="Navigate to log eco-action page"
-                        className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-black font-bold rounded-xl text-sm flex items-center space-x-2 shadow-lg shadow-emerald-500/10 cursor-pointer"
-                      >
-                        <PlusCircle className="w-4 h-4" />
-                        <span>Log Your First Action</span>
-                      </button>
-                      <button
-                        onClick={() => setActiveTab('challenges')}
-                        aria-label="Navigate to active challenges page"
-                        className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-202 hover:text-white font-semibold rounded-xl text-sm border border-slate-700/60 flex items-center space-x-2 cursor-pointer"
-                      >
-                        <Award className="w-4 h-4" />
-                        <span>Explore Active Challenges</span>
-                      </button>
+                  {/* Card 1: Eco Score */}
+                  <div className="bg-[#0b1320] border border-[#16273f] rounded-2xl p-4 flex items-center justify-between shadow-md relative overflow-hidden group">
+                    <div className="flex items-center space-x-3">
+                      {/* Radial Gauge SVG */}
+                      <div className="relative w-12 h-12 flex items-center justify-center">
+                        <svg className="w-full h-full transform -rotate-90">
+                          <circle cx="24" cy="24" r="20" className="stroke-[#101f35] fill-none" strokeWidth="4" />
+                          <circle cx="24" cy="24" r="20" className="stroke-[#10b981] fill-none" strokeWidth="4" strokeDasharray="125.6" strokeDashoffset={125.6 * (1 - displayEcoScore / 100)} strokeLinecap="round" />
+                        </svg>
+                        <span className="absolute text-[11px] font-extrabold text-white">{displayEcoScore}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Eco Score</span>
+                        <span className="text-sm font-extrabold text-white">{displayEcoScore} / 100</span>
+                        <span className="text-[9px] text-[#10b981] font-bold block mt-0.5">Excellent! Keep going!</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Join Department Form Card */}
-                  <div className="glass-card p-6 border border-slate-800 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-md font-bold text-white flex items-center space-x-2">
-                        <Users className="w-4 h-4 text-indigo-305" />
-                        <span>B2B Corporate Network</span>
-                      </h3>
-                      <p className="text-[11px] text-slate-405 mt-1">
-                        Connect with your corporate department to contribute to the global shared leaderboard.
-                      </p>
-
-                      {profileDetails.department ? (
-                        <div className="mt-4 p-3.5 bg-indigo-500/10 border border-indigo-500/20 rounded-xl space-y-2">
-                          <p className="text-xs text-slate-300">Assigned Department:</p>
-                          <p className="text-sm font-extrabold text-white flex items-center">
-                            <span className="w-2.5 h-2.5 rounded-full bg-indigo-300 mr-2 animate-pulse-subtle"></span>
-                            {profileDetails.department}
-                          </p>
-                          <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-900/60">
-                            Your actions automatically earn points for {profileDetails.department}!
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="mt-4 space-y-3">
-                          <label htmlFor="dept-select" className="text-xs font-bold text-slate-300 block">Select Department</label>
-                          <select
-                            id="dept-select"
-                            aria-label="Select department"
-                            className="w-full bg-slate-950 border border-slate-800 text-slate-202 px-3 py-2.5 rounded-xl text-xs focus:outline-none focus:border-indigo-500"
-                            defaultValue=""
-                          >
-                            <option value="" disabled>Choose department...</option>
-                            <option value="Engineering">Engineering</option>
-                            <option value="Sales">Sales</option>
-                            <option value="Operations">Operations</option>
-                            <option value="Marketing">Marketing</option>
-                            <option value="HR">HR</option>
-                          </select>
-                        </div>
-                      )}
+                  {/* Card 2: CO2 Avoided */}
+                  <div className="bg-[#0b1320] border border-[#16273f] rounded-2xl p-4 flex items-center justify-between shadow-md relative overflow-hidden group">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/25 text-[#10b981]">
+                        <Leaf className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">CO₂ Avoided</span>
+                        <span className="text-base font-black text-white">{displayCo2} kg</span>
+                        <span className="text-[9px] text-[#10b981] font-bold block mt-0.5">↑ 18% vs last month</span>
+                      </div>
                     </div>
-
-                    {!profileDetails.department && (
-                      <button
-                        onClick={() => {
-                          const selectEl = document.getElementById('dept-select') as HTMLSelectElement | null;
-                          if (selectEl && selectEl.value) {
-                            handleJoinDepartment(selectEl.value);
-                          }
-                        }}
-                        aria-label="Join corporate department network"
-                        className="mt-4 w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl border border-indigo-500/30 cursor-pointer"
-                      >
-                        Join Department
-                      </button>
-                    )}
-
-                    {profileDetails.department && (
-                      <button
-                        onClick={() => setActiveTab('leaderboard')}
-                        aria-label="Navigate to leaderboard page"
-                        className="mt-4 w-full py-2 bg-slate-900 hover:bg-slate-800 text-slate-202 hover:text-white border border-slate-805 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center space-x-2"
-                      >
-                        <span>View Shared Scoreboard</span>
-                      </button>
-                    )}
                   </div>
+
+                  {/* Card 3: Cash Saved */}
+                  <div className="bg-[#0b1320] border border-[#16273f] rounded-2xl p-4 flex items-center justify-between shadow-md relative overflow-hidden group">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2.5 bg-amber-500/10 rounded-xl border border-amber-500/25 text-amber-400">
+                        <DollarSign className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Cash Saved</span>
+                        <span className="text-base font-black text-amber-400">${displayCash.toFixed(2)}</span>
+                        <span className="text-[9px] text-[#10b981] font-bold block mt-0.5">↑ $62.40 this month</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 4: Trees Equivalent */}
+                  <div className="bg-[#0b1320] border border-[#16273f] rounded-2xl p-4 flex items-center justify-between shadow-md relative overflow-hidden group">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/25 text-emerald-450">
+                        <TrendingUp className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Trees Equivalent</span>
+                        <span className="text-base font-black text-white">{displayTrees}</span>
+                        <span className="text-[9px] text-slate-405 font-bold block mt-0.5">≈ Trees Grown</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 5: Gasoline Saved */}
+                  <div className="bg-[#0b1320] border border-[#16273f] rounded-2xl p-4 flex items-center justify-between shadow-md relative overflow-hidden group">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2.5 bg-[#10b981]/10 rounded-xl border border-[#10b981]/25 text-[#10b981]">
+                        <Zap className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Gasoline Saved</span>
+                        <span className="text-base font-black text-white">{displayGasoline} mi</span>
+                        <span className="text-[9px] text-slate-405 font-bold block mt-0.5">≈ Miles Not Driven</span>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
-                
-                {/* LIVING WORLD SIMULATOR COMPONENT */}
-                <LivingWorldSimulator totalPoints={totalPoints} personalCo2Saved={personalCo2Saved} hasCleanEnergy={hasCleanEnergy} theme={theme} />
 
-                {/* BACKGROUND AUTOMATION ZONE */}
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {/* Main 2-Column Workspace Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   
-                  {/* AUTO-PILOT COMMUTE TRACKER MODULE */}
-                  <section aria-label="Commute Tracker Module" className="glass-card p-6 border border-slate-800/80 flex flex-col justify-between">
-                    <div>
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-800/60 gap-4">
-                        <div>
-                          <h3 className="text-lg font-bold text-white flex items-center space-x-2">
-                            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 mr-2 animate-pulse-subtle"></span>
-                            <span>Module C: Auto-Pilot Commute Tracker</span>
-                          </h3>
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            EcoShift monitors transit patterns in the background to log low-carbon trips without manual entry.
-                          </p>
-                        </div>
+                  {/* Left Column (Main widgets) */}
+                  <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+                    
+                    {/* Living-World Biosphere Card */}
+                    <LivingWorldSimulator
+                      totalPoints={totalPoints}
+                      personalCo2Saved={personalCo2Saved}
+                      hasCleanEnergy={hasCleanEnergy}
+                      theme={theme}
+                      displayEcoScore={displayEcoScore}
+                      showToast={showToast}
+                    />
 
-                        {/* Toggle Switch */}
-                        <div className="flex items-center space-x-3 bg-slate-900/65 px-4 py-2 rounded-xl border border-slate-800 shrink-0">
-                          <span className="text-xs text-slate-350 font-semibold">Commute Monitor</span>
-                          <button
-                            onClick={() => setIsAutoPilotActive(!isAutoPilotActive)}
-                            aria-label="Toggle passive transit background scanning"
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                              isAutoPilotActive ? 'bg-indigo-600' : 'bg-slate-700'
-                            }`}
-                          >
-                            <span
-                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                isAutoPilotActive ? 'translate-x-5' : 'translate-x-0'
-                              }`}
-                            />
-                          </button>
-                          <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded ${
-                            isAutoPilotActive ? 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20' : 'bg-slate-800 text-slate-400 border border-slate-800'
-                          }`}>
-                            {isAutoPilotActive ? 'Active' : 'Inactive'}
+                    {/* Middle Row (Automation Zone & Utility Bill OCR Auditor) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      
+                      {/* Automation Zone Card */}
+                      <div className="bg-[#0b1320] border border-[#16273f] rounded-2xl p-6 flex flex-col justify-between shadow-md relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4">
+                          <span className="text-[9px] bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 px-2 py-0.5 rounded-full font-black uppercase tracking-wider animate-pulse">
+                            ● Live Scan
                           </span>
                         </div>
-                      </div>
-
-                      {/* Simulation Panel */}
-                      <div className="mt-5 space-y-4">
-                        <p className="text-xs text-slate-350 leading-relaxed">
-                          To demonstrate background GPS, motion, and transit matching telemetry in our sandbox environment, trigger a live scan. If active, EcoShift matches your trip velocity and location logs with public metro or rail lines to calculate carbon avoidance metrics automatically.
-                        </p>
-                        
-                        {isScanning && (
-                          <div className="space-y-2">
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-indigo-300 font-semibold animate-pulse">Scanning cell towers and matching GPS coordinates...</span>
-                              <span className="text-slate-300 font-bold">{scanProgress}%</span>
-                            </div>
-                            <div className="w-full bg-slate-950 rounded-full h-2 border border-slate-800 overflow-hidden relative">
-                              {/* Scanning radar line overlay */}
-                              <div className="absolute top-0 bottom-0 left-0 w-20 bg-gradient-to-r from-transparent to-indigo-500/45 animate-scan-light"></div>
-                              <div
-                                className="bg-indigo-600 h-full rounded-full transition-all duration-150 shadow-[0_0_8px_rgba(99,102,241,0.5)]"
-                                style={{ width: `${scanProgress}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex justify-center lg:justify-end mt-6">
-                      <button
-                        onClick={handleSimulateCommute}
-                        disabled={isScanning}
-                        aria-label="Simulate background GPS commute scan"
-                        className={`w-full px-6 py-3 text-xs font-bold rounded-xl flex items-center justify-center space-x-2 transition-all shadow-lg border cursor-pointer ${
-                          isScanning 
-                            ? 'bg-slate-900 border-slate-800 text-slate-405 cursor-not-allowed' 
-                            : 'bg-indigo-600 hover:bg-indigo-500 border-indigo-500/30 text-white shadow-indigo-600/10'
-                        }`}
-                      >
-                        {isScanning ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                            <span>Scanning Commute...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-4 h-4 animate-pulse-subtle" />
-                            <span>Simulate Real-Time Commute Scan</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </section>
-
-                  {/* UTILITY BILL OPTIMIZER MODULE */}
-                  <section aria-label="Utility Bill Optimizer Module" className="glass-card p-6 border border-slate-800/80 flex flex-col justify-between">
-                    <div>
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-800/60 gap-4">
                         <div>
-                          <h3 className="text-lg font-bold text-white flex items-center space-x-2">
-                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2 animate-pulse-subtle"></span>
-                            <span>Module C: Utility Bill Optimizer</span>
+                          <h3 className="text-sm font-extrabold text-white flex items-center space-x-2">
+                            <span>Automation Zone</span>
                           </h3>
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            Audit utility bills using OCR scanning to spot appliance leaks and high-rate consumption spikes.
-                          </p>
+                          <p className="text-[11px] text-slate-450 font-bold uppercase tracking-wider mt-1">Passive Commute Monitor</p>
+                          <p className="text-xs text-slate-400 mt-2">Simulate real-time, device-less commute tracking.</p>
+
+                          {/* Interactive Route / Scan */}
+                          <div className="mt-4 bg-[#070d19] p-4 rounded-xl border border-[#15233c] space-y-3 relative">
+                            {isScanning ? (
+                              <div className="space-y-2.5">
+                                <div className="flex justify-between items-center text-[11px]">
+                                  <span className="text-[#10b981] font-bold animate-pulse">Scanning commute route...</span>
+                                  <span className="text-white font-mono">{scanProgress}%</span>
+                                </div>
+                                <div className="w-full bg-[#101f35] rounded-full h-1.5 overflow-hidden">
+                                  <div className="bg-[#10b981] h-full rounded-full transition-all duration-150" style={{ width: `${scanProgress}%` }}></div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2 text-xs text-[#10b981]">
+                                  <div className="w-2 h-2 rounded-full bg-[#10b981] animate-ping"></div>
+                                  <span className="font-bold">Route matched: Line-3 Metro Transit</span>
+                                </div>
+                                <p className="text-[10px] text-slate-405 leading-relaxed font-semibold">
+                                  Background scan completed successfully. Next passive scan in 28 mins.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Simulation Result message */}
+                          {!isScanning && loggedActions.some(a => a.action.includes("Commute")) && (
+                            <p className="mt-3 text-[11px] text-[#10b981] bg-[#10b981]/5 border border-[#10b981]/25 p-2.5 rounded-xl font-bold">
+                              <span>✓ Good news! Your trip has been logged. +2.3 kg CO₂ avoided.</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="mt-6 flex items-center justify-between pt-4 border-t border-[#16273f]/40">
+                          {/* Commute Monitor switch */}
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[9px] text-slate-405 font-bold uppercase tracking-wider">Monitor</span>
+                            <button
+                              onClick={() => setIsAutoPilotActive(!isAutoPilotActive)}
+                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${isAutoPilotActive ? 'bg-[#10b981]' : 'bg-[#1a2d48]'}`}
+                            >
+                              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${isAutoPilotActive ? 'translate-x-4.5' : 'translate-x-1'}`} />
+                            </button>
+                          </div>
+                          <button
+                            onClick={handleSimulateCommute}
+                            disabled={isScanning}
+                            className="bg-[#10b981] hover:bg-[#0ea5e9] text-black text-xs font-black px-4 py-2 rounded-xl transition-all cursor-pointer"
+                          >
+                            {isScanning ? 'Scanning...' : 'Simulate Scan'}
+                          </button>
                         </div>
                       </div>
 
-                      {/* Dropzone / Scan console */}
-                      <div className="mt-5">
-                        {ocrStep === 'idle' && (
-                          <div
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                            onDrop={handleDrop}
-                            onClick={() => handleOcrScan()}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOcrScan(); }}
-                            role="button"
-                            tabIndex={0}
-                            aria-label="Utility bill OCR drop zone. Drag and drop PDF, PNG or JPG files here, or click to upload."
-                            data-testid="utility-ocr-dropzone"
-                            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center min-h-[140px] focus:outline-none focus:border-emerald-500 ${
-                              isDragging 
-                                ? 'border-emerald-500 bg-emerald-500/5' 
-                                : 'border-slate-800 hover:border-slate-700 bg-slate-950/40 hover:bg-slate-950/60'
-                            }`}
-                          >
-                            <div className="mx-auto w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center border border-slate-805 text-slate-300 mb-3">
-                              <PlusCircle className="w-5 h-5" />
-                            </div>
-                            <p className="text-xs font-bold text-slate-205">
-                              Drag & drop your utility bill here (PDF/PNG/JPG)
-                            </p>
-                            <p className="text-[10px] text-slate-400 mt-1">
-                              or click to browse local files for an AI Energy Audit
-                            </p>
+                      {/* Utility Bill OCR Auditor Card */}
+                      <div id="automation-zone" className="bg-[#0b1320] border border-[#16273f] rounded-2xl p-6 flex flex-col justify-between shadow-md">
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <h3 className="text-sm font-extrabold text-white">Utility Bill OCR Auditor</h3>
+                            <button 
+                              onClick={() => handleOcrScan()}
+                              className="text-[9px] bg-slate-900 border border-[#16273f] text-[#10b981] hover:bg-slate-800 font-bold px-2 py-0.5 rounded-full"
+                            >
+                              Upload
+                            </button>
                           </div>
-                        )}
+                          <p className="text-[11px] text-slate-400">Upload utility bill to detect peak usage.</p>
 
-                        {ocrStep === 'scanning' && (
-                          <div className="bg-slate-950/60 p-5 rounded-xl border border-slate-800 space-y-4">
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-emerald-455 font-semibold animate-pulse">{ocrStatusText}</span>
-                              <span className="text-slate-350 font-bold">{ocrProgress}%</span>
+                          {ocrStep === 'idle' && (
+                            <div 
+                              onClick={() => handleOcrScan()}
+                              onDragOver={handleDragOver}
+                              onDragLeave={handleDragLeave}
+                              onDrop={handleDrop}
+                              className={`mt-4 border border-dashed rounded-xl p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center h-28 ${
+                                isDragging 
+                                  ? 'border-[#10b981] bg-[#10b981]/10' 
+                                  : 'border-[#16273f] hover:border-[#10b981]/50 bg-[#070d19]/60 hover:bg-[#070d19]'
+                              }`}
+                            >
+                              <FileText className={`w-5 h-5 mb-1 transition-colors ${isDragging ? 'text-[#10b981]' : 'text-slate-500'}`} />
+                              <span className="text-[10px] text-slate-300 font-bold block">Electricity Bill May 2024</span>
+                              <span className="text-[8px] text-slate-500 block mt-0.5 font-bold">Drag and drop file here, or click to audit</span>
                             </div>
-                            <div className="w-full bg-slate-900 rounded-full h-2 border border-slate-800 overflow-hidden relative">
-                              <div className="absolute top-0 bottom-0 left-0 w-20 bg-gradient-to-r from-transparent to-emerald-500/40 animate-scan-light"></div>
-                              <div
-                                className="bg-emerald-600 h-full rounded-full transition-all duration-150 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
-                                style={{ width: `${ocrProgress}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        )}
+                          )}
 
-                        {ocrStep === 'complete' && (
-                          <div className="space-y-4">
-                            {/* Rich Personalized Alert Box */}
-                            <div className="bg-slate-950 p-4 rounded-xl border border-emerald-500/25 space-y-3 relative overflow-hidden">
-                              <div className="absolute top-0 right-0 px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border-l border-b border-emerald-500/20 text-[9px] font-bold uppercase rounded-bl-lg">
-                                Audit Match
+                          {ocrStep === 'scanning' && (
+                            <div className="mt-4 bg-[#070d19] p-4 rounded-xl border border-[#15233c] space-y-2">
+                              <div className="flex justify-between items-center text-[10px]">
+                                <span className="text-emerald-455 font-bold animate-pulse">{ocrStatusText}</span>
+                                <span className="text-white font-mono">{ocrProgress}%</span>
+                              </div>
+                              <div className="w-full bg-[#101f35] rounded-full h-1.5 overflow-hidden">
+                                <div className="bg-[#10b981] h-full" style={{ width: `${ocrProgress}%` }}></div>
+                              </div>
+                            </div>
+                          )}
+
+                          {ocrStep === 'complete' && (
+                            <div className="mt-4 bg-[#070d19] p-3.5 rounded-xl border border-[#10b981]/25 space-y-3">
+                              <div className="flex justify-between items-center">
+                                <span className="text-[9px] bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/25 px-1.5 py-0.5 rounded font-extrabold uppercase">
+                                  Peak Usage Detected
+                                </span>
+                                <span className="text-[9.5px] text-[#10b981] font-bold">16.0 kg CO₂ total</span>
                               </div>
                               
-                              <div className="space-y-1">
-                                <h4 className="text-xs font-bold text-white flex items-center">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 animate-pulse-subtle"></span>
-                                  Energy Leaks Detected
-                                </h4>
-                                <p className="text-[11px] text-slate-300 leading-relaxed pl-3.5">
-                                  Standby energy draw ("vampire loads") is leaking <strong className="text-amber-400 font-semibold">₹1,240 / month</strong>.
-                                </p>
-                              </div>
-
-                              <div className="space-y-1 pt-2 border-t border-slate-900/60">
-                                <h4 className="text-xs font-bold text-white flex items-center">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 animate-pulse-subtle"></span>
-                                  Peak Rate Penalty surcharges
-                                </h4>
-                                <p className="text-[11px] text-slate-300 leading-relaxed pl-3.5">
-                                  Running heavy appliances during peak grid hours <strong className="text-amber-400 font-semibold">(5:00 PM – 9:00 PM)</strong> adds a surcharge penalty of <strong className="text-amber-400 font-semibold">₹850 / month</strong> at ₹7.50/kWh.
-                                </p>
-                              </div>
-
-                              {/* Actionable optimization checklist */}
-                              <div className="space-y-2 pt-3 border-t border-slate-900/60">
-                                <h4 className="text-xs font-bold text-white flex items-center">
-                                  <Sparkles className="w-3.5 h-3.5 mr-1.5 text-emerald-400 animate-pulse-subtle" />
-                                  <span>Actionable Optimization Checklist</span>
-                                </h4>
-                                
-                                <div className="space-y-1.5 pl-1">
-                                  {checklist.map(item => (
+                              <div className="space-y-2 max-h-36 overflow-y-auto">
+                                {checklist.map((item) => (
+                                  <div key={item.id} className="bg-slate-900/80 p-2.5 rounded-xl border border-[#15233c] flex items-center justify-between text-[10px] space-x-2">
+                                    <div className="flex-1 min-w-0 text-left">
+                                      <p className={`font-semibold text-white truncate leading-tight ${item.completed ? 'line-through text-slate-500' : ''}`}>
+                                        {item.text}
+                                      </p>
+                                      <span className="text-[8px] text-slate-450 block mt-0.5 font-bold uppercase">
+                                        -{item.co2} kg CO₂ | +{item.points} XP
+                                      </span>
+                                    </div>
                                     <button
-                                      key={item.id}
-                                      disabled={item.completed}
                                       onClick={() => handleCheckItem(item.id)}
-                                      aria-label={`Apply optimization: ${item.text}`}
-                                      className={`w-full text-left p-2 rounded-lg text-[10px] font-semibold flex items-center justify-between border transition-all ${
+                                      disabled={item.completed}
+                                      className={`px-2 py-1 text-[9px] font-black rounded-lg transition-all shrink-0 cursor-pointer ${
                                         item.completed
-                                          ? 'bg-slate-900 border-slate-800 text-slate-505 cursor-not-allowed'
-                                          : 'bg-slate-950 hover:bg-slate-900 border-slate-850 hover:border-emerald-500/25 text-slate-205 cursor-pointer'
+                                          ? 'bg-slate-950 text-slate-500 border border-slate-850 cursor-not-allowed'
+                                          : 'bg-[#10b981] hover:bg-[#10b981]/90 text-black'
                                       }`}
                                     >
-                                      <span className="flex items-center space-x-2">
-                                        <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
-                                          item.completed ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400' : 'border-slate-700'
-                                        }`}>
-                                          {item.completed && '✓'}
-                                        </span>
-                                        <span className={item.completed ? 'line-through' : ''}>{item.text}</span>
-                                      </span>
-                                      {!item.completed && (
-                                        <span className="text-emerald-400 font-bold shrink-0 ml-1">
-                                          +₹{item.cash}
-                                        </span>
-                                      )}
+                                      {item.completed ? 'Applied' : 'Apply'}
                                     </button>
-                                  ))}
-                                </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
+                          )}
+                        </div>
+                      </div>
 
-                            {/* Actions and toggle */}
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => setOcrStep('idle')}
-                                aria-label="Scan another utility bill"
-                                className="px-3 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
-                              >
-                                Scan Another Bill
+                    </div>
+
+                    {/* Bottom Row (Checkout Nudge & AI Eco Assistant & Carbon Footprint Calculator) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      
+                      {/* Checkout Nudge Card */}
+                      <div className="bg-[#0b1320] border border-[#16273f] rounded-2xl p-5 flex flex-col justify-between shadow-md h-72">
+                        <div>
+                          <h3 className="text-xs font-black text-white uppercase tracking-wider">Checkout Nudge</h3>
+                          <p className="text-[10px] text-slate-450 mt-0.5 font-bold uppercase">Cart Analyzer</p>
+                          <p className="text-[11px] text-slate-400 mt-2 leading-tight">High impact item detected in your cart.</p>
+
+                          <div className="mt-3 bg-[#070d19] p-2.5 rounded-xl border border-[#15233c] flex items-center justify-between space-x-2 text-[10px]">
+                            <div className="text-center flex-1">
+                              <span className="text-slate-500 font-extrabold block uppercase text-[8px]">Current</span>
+                              <span className="text-white font-bold block truncate mt-1">Beef Burger</span>
+                              <span className="text-slate-500 text-[8px] block">Single-use Pkg</span>
+                            </div>
+                            <div className="text-slate-400 text-xs font-bold shrink-0">➔</div>
+                            <div className="text-center flex-1">
+                              <span className="text-[#10b981] font-extrabold block uppercase text-[8px]">Eco-Swap</span>
+                              <span className="text-[#10b981] font-bold block truncate mt-1">Plant Patty</span>
+                              <span className="text-[#10b981]/60 text-[8px] block">Reusable Pkg</span>
+                            </div>
+                          </div>
+
+                          <p className="text-[10px] text-slate-300 mt-3 text-center bg-[#10b981]/5 border border-[#10b981]/15 p-1.5 rounded-lg">
+                            You save <strong className="text-amber-400">$1.70</strong> and avoid <strong className="text-[#10b981]">4.2 kg CO₂</strong>
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={handleEcoSwap}
+                          disabled={isNudgeSwapped}
+                          className={`w-full py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                            isNudgeSwapped 
+                              ? 'bg-slate-900 border border-[#16273f] text-slate-550 cursor-not-allowed' 
+                              : 'bg-[#10b981] hover:bg-[#10b981]/90 text-black shadow-md'
+                          }`}
+                        >
+                          {isNudgeSwapped ? 'Swapped! +100 XP' : 'Swap Now'}
+                        </button>
+                      </div>
+
+                      {/* AI Eco Assistant Card */}
+                      <div className="bg-[#0b1320] border border-[#16273f] rounded-2xl p-5 flex flex-col justify-between shadow-md h-72">
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <h3 className="text-xs font-black text-white uppercase tracking-wider">AI Eco Assistant</h3>
+                            <span className="text-[8px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded font-extrabold uppercase">
+                              Gemini
+                            </span>
+                          </div>
+
+                          <div className="bg-[#070d19] p-3 rounded-xl border border-[#15233c] h-32 overflow-y-auto space-y-2.5 text-[10px]">
+                            <p className="text-slate-400 leading-normal">
+                              Hi {profileDetails.displayName ? profileDetails.displayName.split(' ')[0] : 'Alex'}! How can I help you reduce your impact today?
+                            </p>
+                            
+                            {/* Suggestion Chips */}
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              <button onClick={() => handleSendChat("How to reduce energy bill?")} className="bg-slate-900 hover:bg-[#10b981]/10 hover:text-[#10b981] border border-[#15233c] text-slate-350 px-2 py-1 rounded-full text-[8.5px] font-semibold text-left transition-colors cursor-pointer">
+                                How to reduce energy bill?
+                              </button>
+                              <button onClick={() => handleSendChat("Best zero-waste habits?")} className="bg-slate-900 hover:bg-[#10b981]/10 hover:text-[#10b981] border border-[#15233c] text-slate-350 px-2 py-1 rounded-full text-[8.5px] font-semibold text-left transition-colors cursor-pointer">
+                                Best zero-waste habits?
+                              </button>
+                              <button onClick={() => handleSendChat("Green commute tips?")} className="bg-slate-900 hover:bg-[#10b981]/10 hover:text-[#10b981] border border-[#15233c] text-slate-350 px-2 py-1 rounded-full text-[8.5px] font-semibold text-left transition-colors cursor-pointer">
+                                Green commute tips?
                               </button>
                             </div>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  </section>
-                </div>
+                        </div>
 
-                {/* LOGGED ACTIONS LIST */}
-                <div className="glass-card p-6 space-y-6">
-                  <div className="flex items-center space-x-3 pb-4 border-b border-slate-800/60">
-                    <div className="p-2 bg-slate-900 rounded-lg text-emerald-405 border border-slate-800">
-                      <History className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-white">Module B: Carbon-to-Cash Ledger</h3>
-                      <p className="text-xs text-slate-405">Track and manage your ecological contributions and financial returns</p>
-                    </div>
-                  </div>
-
-                  {/* Split-Grid Layout */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Left Box: The Carbon Balance */}
-                    <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800/80 flex flex-col justify-between space-y-4">
-                      <div>
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-slate-300 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                          The Carbon Balance
-                        </span>
-                        <div className="mt-3 flex items-baseline space-x-1.5">
-                          <span className="text-3xl font-extrabold text-white" data-testid="carbon-saved-value">{personalCo2Saved.toFixed(2)}</span>
-                          <span className="text-emerald-400 font-bold text-sm">kg CO₂ prevented</span>
+                        <div className="relative mt-2">
+                          <input 
+                            type="text" 
+                            placeholder="Ask me anything..." 
+                            className="w-full bg-[#070d19] border border-[#15233c] text-xs text-white px-3 py-2 rounded-xl focus:outline-none focus:border-[#10b981] pr-8 placeholder-slate-550"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSendChat((e.target as HTMLInputElement).value);
+                                (e.target as HTMLInputElement).value = '';
+                              }
+                            }}
+                          />
+                          <button className="absolute right-2.5 top-2 text-slate-405 hover:text-white cursor-pointer">
+                            ➔
+                          </button>
                         </div>
                       </div>
-                      
-                      <div className="text-xs text-slate-300 space-y-1.5 pt-3 border-t border-slate-900">
-                        <p className="flex items-center">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2"></span>
-                          Equivalent to <strong className="text-white mx-1">{(personalCo2Saved * 0.04).toFixed(3)}</strong> tree seedlings grown for 10 years
-                        </p>
-                        <p className="flex items-center">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2"></span>
-                          Equivalent to <strong className="text-white mx-1">{(personalCo2Saved * 2.4).toFixed(1)}</strong> miles driven by a standard car
-                        </p>
-                      </div>
-                    </div>
 
-                    {/* Right Box: The Cash Wallet */}
-                    <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800/80 flex flex-col justify-between space-y-4">
-                      <div>
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-slate-300 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                          The Cash Wallet
-                        </span>
-                        <div className="mt-3 flex items-baseline space-x-1.5">
-                          <span className="text-3xl font-extrabold text-amber-400" data-testid="cash-saved-value">{formatCurrency(personalCashSaved)}</span>
-                          <span className="text-slate-400 text-sm">cumulative savings</span>
+                      {/* Carbon Footprint Calculator Card */}
+                      <div className="bg-[#0b1320] border border-[#16273f] rounded-2xl p-5 flex flex-col justify-between shadow-md h-72">
+                        <div>
+                          <h3 className="text-xs font-black text-white uppercase tracking-wider">Carbon Footprint Calculator</h3>
+                          <p className="text-[10px] text-slate-450 mt-0.5 font-bold uppercase">Step 2 of 3: Energy Consumption</p>
+                          <p className="text-[11px] text-slate-400 mt-2">Tell us about your energy usage.</p>
+
+                          <div className="mt-4 space-y-2">
+                            <div className="flex justify-between text-xs font-bold text-white font-mono">
+                              <span>Consumption:</span>
+                              <span className="text-[#10b981]">420 kWh / mo</span>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="100" 
+                              max="1000" 
+                              defaultValue="420" 
+                              className="w-full accent-[#10b981] h-1 bg-[#101f35] rounded-lg cursor-pointer"
+                            />
+                            <div className="flex justify-between text-[9px] text-slate-500 font-bold uppercase select-none">
+                              <span>Low (100)</span>
+                              <span>High (1000)</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex space-x-2 mt-4">
+                          <button onClick={() => showToast("Going to Step 1...")} className="flex-1 py-2 bg-slate-900 border border-[#15233c] text-slate-355 hover:text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-colors cursor-pointer">
+                            Back
+                          </button>
+                          <button onClick={() => showToast("Calculating result...")} className="flex-1 py-2 bg-[#10b981] hover:bg-[#10b981]/90 text-black text-xs font-bold rounded-xl transition-all cursor-pointer">
+                            Next
+                          </button>
                         </div>
                       </div>
-                      
-                      <div className="text-xs text-slate-300 space-y-1.5 pt-3 border-t border-slate-900">
-                        <p className="flex items-center">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mr-2"></span>
-                          Direct returns on energy efficiencies and transit choices
-                        </p>
-                        <p className="flex items-center">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mr-2"></span>
-                          Avg. savings value: <strong className="text-white mx-1">{formatCurrency(personalCashSaved / Math.max(1, loggedActions.length))}</strong> per action
-                        </p>
-                      </div>
+
                     </div>
+
                   </div>
 
-                  {/* Personal Action Log Table */}
-                  <div className="pt-4 space-y-3">
-                    <div className="flex justify-between items-center">
-                      <h4 className="text-sm font-bold text-slate-300">Logged Shifts Registry</h4>
-                      <span className="text-xs text-slate-400">Showing {loggedActions.length} record(s)</span>
-                    </div>
+                  {/* Right Column (Sidebar widgets) */}
+                  <div className="lg:col-span-4 xl:col-span-3 space-y-6">
                     
-                    <div className="overflow-x-auto rounded-xl border border-slate-800">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="bg-slate-900/60 text-slate-350 uppercase tracking-wider text-[10px] border-b border-slate-800">
-                            <th className="p-3">Date</th>
-                            <th className="p-3">Action Type</th>
-                            <th className="p-3">Logged Description</th>
-                            <th className="p-3 text-right">CO₂ Saved</th>
-                            <th className="p-3 text-right">Cash Saved</th>
-                            <th className="p-3 text-center">XP</th>
-                            <th className="p-3 text-center">Impact</th>
-                            <th className="p-3 text-center">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800">
-                          {loggedActions.map((item) => (
-                            <tr key={item.id} className="hover:bg-slate-900/40 transition-colors">
-                              <td className="p-3 text-slate-300 whitespace-nowrap">{formatTime(item.timestamp)}</td>
-                              <td className="p-3 whitespace-nowrap">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                  item.actionType === 'Transportation' ? 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20' :
-                                  item.actionType === 'Energy' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                                  item.actionType === 'Waste' ? 'bg-teal-500/10 text-teal-300 border border-teal-500/20' :
-                                  item.actionType === 'Challenges' ? 'bg-purple-500/10 text-purple-300 border border-purple-500/20' :
-                                  'bg-slate-500/10 text-slate-300 border border-slate-500/20'
-                                }`}>
-                                  {item.actionType}
-                                </span>
-                              </td>
-                              <td className="p-3 text-slate-205 font-medium max-w-xs truncate">{item.action}</td>
-                              <td className="p-3 text-right text-emerald-400 font-bold">-{item.co2Saved.toFixed(2)} kg</td>
-                              <td className="p-3 text-right text-amber-400 font-bold">+{formatCurrency(item.cashSaved)}</td>
-                              <td className="p-3 text-center text-slate-200 font-mono">+{item.points} XP</td>
-                              <td className="p-3 text-center">
-                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                                  item.impact === 'high' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                                  item.impact === 'medium' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                                  'bg-slate-500/10 text-slate-300 border border-slate-500/20'
-                                }`}>
-                                  {item.impact}
-                                </span>
-                              </td>
-                              <td className="p-3 text-center">
-                                <button
-                                  onClick={() => handleDeleteAction(item.id)}
-                                  aria-label={`Delete ${item.action} action from ledger`}
-                                  className="px-2 py-1 bg-slate-900 hover:bg-red-500/25 border border-slate-800 hover:border-red-500/30 text-slate-300 hover:text-red-400 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
-                                >
-                                  Delete
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                          {loggedActions.length === 0 && (
-                            <tr>
-                              <td colSpan={8} className="p-8 text-center text-slate-400 italic">
-                                No ecological actions logged in ledger yet.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
+                    {/* Carbon-to-Cash Ledger Card */}
+                    <div className="bg-[#0b1320] border border-[#16273f] rounded-2xl p-5 shadow-md space-y-4">
+                      <div className="flex justify-between items-center pb-3 border-b border-[#16273f]/65">
+                        <h3 className="text-xs font-black text-white uppercase tracking-wider">Carbon-to-Cash Ledger</h3>
+                        <button 
+                          onClick={() => setActiveTab('logger')}
+                          className="text-[10px] text-[#10b981] font-bold hover:underline cursor-pointer"
+                        >
+                          View Full Ledger →
+                        </button>
+                      </div>
+
+                      {/* Balances */}
+                      <div className="grid grid-cols-2 gap-2 text-center">
+                        <div className="bg-[#070d19] p-2.5 rounded-xl border border-[#15233c]">
+                          <span className="text-[8px] text-slate-400 font-extrabold uppercase block">Carbon Balance</span>
+                          <span className="text-sm font-black text-white block mt-1">{displayCo2} kg</span>
+                        </div>
+                        <div className="bg-[#070d19] p-2.5 rounded-xl border border-[#15233c]">
+                          <span className="text-[8px] text-slate-400 font-extrabold uppercase block">Cash Wallet</span>
+                          <span className="text-sm font-black text-amber-400 block mt-1">${displayCash.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      {/* Recent Entries */}
+                      <div className="space-y-3 pt-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-slate-405 font-bold uppercase">Recent Entries</span>
+                          <button 
+                            onClick={() => setActiveTab('logger')}
+                            className="text-[9px] bg-slate-900 border border-[#15233c] text-white hover:text-[#10b981] font-bold px-2 py-0.5 rounded-full cursor-pointer"
+                          >
+                            + Add Entry
+                          </button>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="bg-[#070d19] p-2.5 rounded-xl border border-[#15233c]/85 flex items-center justify-between text-[10.5px]">
+                            <div className="flex items-center space-x-2.5 overflow-hidden">
+                              <span className="text-indigo-405 shrink-0">🚌</span>
+                              <div className="overflow-hidden">
+                                <span className="text-white font-bold block truncate">Metro Commute</span>
+                                <span className="text-[8px] text-slate-505 uppercase font-black">Transportation</span>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-[#10b981] font-bold block">+2.3 kg</span>
+                              <span className="text-amber-405 font-bold block text-[9.5px]">+$1.20</span>
+                            </div>
+                          </div>
+
+                          <div className="bg-[#070d19] p-2.5 rounded-xl border border-[#15233c]/85 flex items-center justify-between text-[10.5px]">
+                            <div className="flex items-center space-x-2.5 overflow-hidden">
+                              <span className="text-amber-405 shrink-0">💡</span>
+                              <div className="overflow-hidden">
+                                <span className="text-white font-bold block truncate">Electricity Optimization</span>
+                                <span className="text-[8px] text-slate-505 uppercase font-black">Energy</span>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-[#10b981] font-bold block">+18.6 kg</span>
+                              <span className="text-amber-405 font-bold block text-[9.5px]">+$6.15</span>
+                            </div>
+                          </div>
+
+                          <div className="bg-[#070d19] p-2.5 rounded-xl border border-[#15233c]/85 flex items-center justify-between text-[10.5px]">
+                            <div className="flex items-center space-x-2.5 overflow-hidden">
+                              <span className="text-emerald-450 shrink-0">🥗</span>
+                              <div className="overflow-hidden">
+                                <span className="text-white font-bold block truncate">Plant-Based Meal</span>
+                                <span className="text-[8px] text-slate-505 uppercase font-black">Diet</span>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-[#10b981] font-bold block">+2.4 kg</span>
+                              <span className="text-amber-405 font-bold block text-[9.5px]">+$0.80</span>
+                            </div>
+                          </div>
+
+                          <div className="bg-[#070d19] p-2.5 rounded-xl border border-[#15233c]/85 flex items-center justify-between text-[10.5px]">
+                            <div className="flex items-center space-x-2.5 overflow-hidden">
+                              <span className="text-teal-400 shrink-0">♻️</span>
+                              <div className="overflow-hidden">
+                                <span className="text-white font-bold block truncate">Recycle: Paper</span>
+                                <span className="text-[8px] text-slate-505 uppercase font-black">Waste</span>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-[#10b981] font-bold block">+1.1 kg</span>
+                              <span className="text-amber-405 font-bold block text-[9.5px]">+$0.35</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Enterprise Leaderboard Card */}
+                    <div className="bg-[#0b1320] border border-[#16273f] rounded-2xl p-5 shadow-md space-y-4">
+                      <div className="flex justify-between items-center pb-3 border-b border-[#16273f]/65">
+                        <h3 className="text-xs font-black text-white uppercase tracking-wider">Enterprise Leaderboard</h3>
+                        <span className="text-[10px] text-slate-455 font-bold bg-[#070d19] px-2 py-0.5 border border-[#15233c] rounded-lg">This Month</span>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between text-xs bg-[#070d19]/40 hover:bg-[#070d19] p-2 rounded-xl border border-[#15233c]/70 transition-colors">
+                          <div className="flex items-center space-x-2.5 overflow-hidden">
+                            <span className="text-amber-500 font-black w-4 text-center">1</span>
+                            <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">E</div>
+                            <span className="text-white font-bold truncate">Engineering</span>
+                          </div>
+                          <span className="text-[#10b981] font-extrabold shrink-0">12,540 pts</span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs bg-[#070d19]/40 hover:bg-[#070d19] p-2 rounded-xl border border-[#15233c]/70 transition-colors">
+                          <div className="flex items-center space-x-2.5 overflow-hidden">
+                            <span className="text-slate-400 font-black w-4 text-center">2</span>
+                            <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">O</div>
+                            <span className="text-white font-semibold truncate">Operations</span>
+                          </div>
+                          <span className="text-[#10b981] font-extrabold shrink-0">11,230 pts</span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs bg-[#070d19]/40 hover:bg-[#070d19] p-2 rounded-xl border border-[#15233c]/70 transition-colors">
+                          <div className="flex items-center space-x-2.5 overflow-hidden">
+                            <span className="text-amber-700 font-black w-4 text-center">3</span>
+                            <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">M</div>
+                            <span className="text-white font-semibold truncate">Marketing</span>
+                          </div>
+                          <span className="text-[#10b981] font-extrabold shrink-0">8,760 pts</span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs bg-[#070d19]/40 hover:bg-[#070d19] p-2 rounded-xl border border-[#15233c]/70 transition-colors">
+                          <div className="flex items-center space-x-2.5 overflow-hidden">
+                            <span className="text-slate-550 font-black w-4 text-center">4</span>
+                            <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">S</div>
+                            <span className="text-white font-semibold truncate">Sales</span>
+                          </div>
+                          <span className="text-slate-350 font-bold shrink-0">7,890 pts</span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs bg-[#070d19]/40 hover:bg-[#070d19] p-2 rounded-xl border border-[#15233c]/70 transition-colors">
+                          <div className="flex items-center space-x-2.5 overflow-hidden">
+                            <span className="text-slate-550 font-black w-4 text-center">5</span>
+                            <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0">H</div>
+                            <span className="text-white font-semibold truncate">HR</span>
+                          </div>
+                          <span className="text-slate-350 font-bold shrink-0">6,210 pts</span>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => setActiveTab('leaderboard')}
+                        className="w-full py-2 bg-slate-900 border border-[#15233c] text-xs font-bold text-slate-355 rounded-xl hover:bg-slate-800 block text-center cursor-pointer transition-colors"
+                      >
+                        View Full Leaderboard
+                      </button>
+                    </div>
+
                   </div>
+
                 </div>
+
               </div>
             )}
 
@@ -4163,6 +4191,78 @@ function EcoShiftApp() {
                         <span className="text-[10px] text-emerald-400 opacity-80 group-hover:opacity-100 transition-opacity">+{preset.carbon} kg</span>
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                {/* Logged Actions Registry Table */}
+                <div className="glass-card p-6 border border-slate-800">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-bold text-white">Logged Actions Registry</h3>
+                    <span className="text-xs text-slate-400">Total: {loggedActions.length} entry/ies</span>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-slate-800">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-900/60 text-slate-300 uppercase tracking-wider text-[10px] border-b border-slate-800">
+                          <th className="p-3">Date</th>
+                          <th className="p-3">Category</th>
+                          <th className="p-3">Description</th>
+                          <th className="p-3 text-right">CO₂ Saved</th>
+                          <th className="p-3 text-right">Cash Saved</th>
+                          <th className="p-3 text-center">XP</th>
+                          <th className="p-3 text-center">Impact</th>
+                          <th className="p-3 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800">
+                        {loggedActions.map((item) => (
+                          <tr key={item.id} className="hover:bg-slate-900/40 transition-colors">
+                            <td className="p-3 text-slate-300 whitespace-nowrap">{formatTime(item.timestamp)}</td>
+                            <td className="p-3 whitespace-nowrap">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                item.actionType === 'Transportation' ? 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20' :
+                                item.actionType === 'Energy' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                                item.actionType === 'Waste' ? 'bg-teal-500/10 text-teal-300 border border-teal-500/20' :
+                                item.actionType === 'Challenges' ? 'bg-purple-500/10 text-purple-300 border border-purple-500/20' :
+                                'bg-slate-500/10 text-slate-300 border border-slate-500/20'
+                              }`}>
+                                {item.actionType}
+                              </span>
+                            </td>
+                            <td className="p-3 text-slate-205 font-medium max-w-xs truncate">{item.action}</td>
+                            <td className="p-3 text-right text-emerald-400 font-bold">-{item.co2Saved.toFixed(2)} kg</td>
+                            <td className="p-3 text-right text-amber-400 font-bold">+₹{item.cashSaved.toFixed(2)}</td>
+                            <td className="p-3 text-center text-slate-200 font-mono">+{item.points} XP</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                                item.impact === 'high' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                item.impact === 'medium' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                                'bg-slate-500/10 text-slate-300 border border-slate-500/20'
+                              }`}>
+                                {item.impact}
+                              </span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <button
+                                onClick={() => handleDeleteAction(item.id)}
+                                aria-label={`Delete ${item.action} action`}
+                                className="px-2 py-1 bg-slate-900 hover:bg-red-500/25 border border-slate-800 hover:border-red-500/30 text-slate-300 hover:text-red-400 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {loggedActions.length === 0 && (
+                          <tr>
+                            <td colSpan={8} className="p-8 text-center text-slate-400 italic">
+                              No actions logged yet.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>

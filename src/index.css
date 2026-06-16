@@ -73,6 +73,26 @@
   --text-main: #cbd5e1;
   --text-title: #ffffff;
   --text-muted: #94a3b8;
+
+  /* Biosphere specific color tokens */
+  --green: #4ade80;
+  --green2: #22c55e;
+  --green3: #16a34a;
+  --green4: #15803d;
+  --dark: #0a0f0a;
+  --dark2: #111711;
+  --dark3: #161e16;
+  --dark4: #1a241a;
+  --card: #1a241a;
+  --card2: #1e2a1e;
+  --border: #2a3a2a;
+  --border2: #334433;
+  --text: #e8f0e8;
+  --text2: #a8c0a8;
+  --text3: #6a8a6a;
+  --amber: #fbbf24;
+  --blue: #60a5fa;
+  --red: #f87171;
 }
 
 .theme-light {
@@ -84,6 +104,26 @@
   --text-main: #334155;
   --text-title: #0f172a;
   --text-muted: #64748b;
+
+  /* Biosphere specific light theme color tokens */
+  --green: #16a34a;
+  --green2: #22c55e;
+  --green3: #15803d;
+  --green4: #166534;
+  --dark: #f8fafc;
+  --dark2: #f1f5f9;
+  --dark3: #e2e8f0;
+  --dark4: #cbd5e1;
+  --card: #ffffff;
+  --card2: #f8fafc;
+  --border: #e2e8f0;
+  --border2: #cbd5e1;
+  --text: #0f172a;
+  --text2: #334155;
+  --text3: #64748b;
+  --amber: #d97706;
+  --blue: #2563eb;
+  --red: #dc2626;
 }
 
 .sr-only {
@@ -380,5 +420,49 @@ button:active {
     0 20px 40px rgba(0, 0, 0, 0.06),
     inset 0 0 24px rgba(16, 185, 129, 0.02);
 }
+
+/* Living-World Biosphere Scene & Animations */
+.biosphere{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:relative;}
+.bio-header{padding:12px 14px 0;display:flex;align-items:center;justify-content:space-between;}
+.bio-title{font-size:15px;font-weight:700;}
+.bio-sub{font-size:10px;color:var(--text3);}
+.eco-badge{background:var(--green4);color:#fff;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;}
+.scene{height:200px;position:relative;overflow:hidden;margin-top:8px;}
+.sky{width:100%;height:100%;background:linear-gradient(180deg,#0a1a2e 0%,#1a3a5a 40%,#2a5a3a 70%,#1a3a1a 100%);}
+.mountains{position:absolute;bottom:50px;width:100%;display:flex;align-items:flex-end;}
+.city-buildings{position:absolute;bottom:48px;left:0;right:0;display:flex;align-items:flex-end;gap:2px;padding:0 40px;}
+.building{background:#1a3a5a;border-top:2px solid #2a5a8a;position:relative;}
+.building .windows{position:absolute;top:4px;left:3px;right:3px;display:grid;grid-template-columns:repeat(2,1fr);gap:2px;}
+.window{width:4px;height:4px;background:#fbbf2466;border-radius:1px;}
+.solar-panel{position:absolute;top:0;left:0;right:0;height:5px;background:#1a6a3a;}
+.ground{position:absolute;bottom:0;width:100%;height:50px;background:#1a3a1a;}
+.road{position:absolute;bottom:0;width:100%;height:16px;background:#1a1a1a;border-top:2px solid #2a2a2a;}
+.road-line{position:absolute;bottom:6px;width:30px;height:3px;background:#fbbf2466;border-radius:2px;}
+.trees-row{position:absolute;bottom:16px;display:flex;gap:8px;left:20px;}
+.tree-svg{width:18px;}
+.windmills{position:absolute;bottom:60px;display:flex;gap:50px;left:30px;}
+.moon{position:absolute;top:15px;right:40px;width:30px;height:30px;background:#e8e8c0;border-radius:50%;box-shadow:0 0 20px #e8e8c066;}
+.birds{position:absolute;top:25px;left:100px;font-size:8px;opacity:.6;}
+.train-track{position:absolute;bottom:16px;width:110%;left:-5%;}
+.train-wrapper{position:absolute;bottom:16px;animation:trainRun 8s linear infinite;white-space:nowrap;}
+.train-body{display:inline-flex;align-items:flex-end;gap:0;}
+.train-engine,.train-car{height:28px;position:relative;}
+
+.bio-zones{display:flex;gap:4px;padding:8px 14px 10px;border-top:1px solid var(--border);}
+.zone{flex:1;text-align:center;padding:5px;border-radius:6px;font-size:9px;}
+.zone-num{font-weight:700;font-size:11px;}
+.zone-name{color:var(--text3);margin-top:1px;}
+.zone.active{background:var(--dark3);border:1px solid var(--border2);}
+.tip{padding:4px 14px 8px;font-size:9px;color:var(--green);display:flex;align-items:center;gap:4px;}
+
+@keyframes trainRun{0%{transform:translateX(-300px);}100%{transform:translateX(calc(100vw + 300px));}}
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+@keyframes progressAnim{0%{width:60%;}100%{width:90%;}}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-3px);}}
+
+.windmill-arm{transform-origin:50% 15%;animation:spin 3s linear infinite;}
+.windmill-arm2{transform-origin:50% 15%;animation:spin 4s linear infinite;}
+.cloud{position:absolute;background:#ffffff18;border-radius:20px;animation:float 4s ease-in-out infinite;}
 
 
