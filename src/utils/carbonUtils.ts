@@ -35,6 +35,27 @@ export function calculateCommuteCash(km: number): number {
 }
 
 /**
+ * Calculates the Eco Score based on CO2 avoided
+ */
+export function calculateEcoScore(co2Saved: number): number {
+  return Math.min(100, Math.max(60, 65 + Math.floor(co2Saved / 56.7)));
+}
+
+/**
+ * Calculates Trees grown equivalent
+ */
+export function calculateTreesEquivalent(co2Saved: number): number {
+  return Math.round(co2Saved / 20.12);
+}
+
+/**
+ * Calculates Gasoline equivalent miles not driven
+ */
+export function calculateGasolineSaved(co2Saved: number): string {
+  return (co2Saved * 0.4197).toFixed(1);
+}
+
+/**
  * Aggregates logs of environmental actions to derive totals
  */
 export function aggregateCarbonMetrics(actions: EcoAction[]) {
@@ -77,4 +98,67 @@ export function generatePersonalizedInsight(actions: EcoAction[]): string {
   }
 
   return "Ledger initialized. Add transportation or energy savings to view your customized recommendations.";
+}
+
+export interface AddActionState {
+  loggedActions: EcoAction[];
+  dbFallbackActive: boolean;
+  user: { uid: string } | null;
+}
+
+/**
+ * Simulated state handler for Firestore offline / local-state fallback logic.
+ * Updates local state immediately. If user is offline/db fallback is active, returns immediately.
+ * Otherwise, triggers mock Firestore write.
+ */
+export async function simulateAddActionFlow(
+  state: AddActionState,
+  newActionData: { actionType: string; action: string; co2Saved: number; cashSaved: number; points: number; impact: 'low' | 'medium' | 'high' },
+  saveToFirestoreMock: (uid: string, data: EcoAction) => Promise<void>
+): Promise<{ state: AddActionState; firestoreCalled: boolean; errorOccurred: boolean }> {
+  const { loggedActions, dbFallbackActive, user } = state;
+
+  const co2Val = Number(newActionData.co2Saved);
+  const cashVal = Number(newActionData.cashSaved);
+  const ptsVal = Number(newActionData.points);
+
+  if (isNaN(co2Val) || co2Val < 0 || isNaN(cashVal) || cashVal < 0 || isNaN(ptsVal) || ptsVal < 0) {
+    throw new Error("Metrics values must be positive numbers.");
+  }
+
+  const sanitizedAction = newActionData.action.replace(/<[^>]*>/g, '').trim();
+  if (sanitizedAction.length === 0) {
+    throw new Error("Invalid action description.");
+  }
+
+  const tempId = 'local-temp-id';
+  const newLog: EcoAction = {
+    id: tempId,
+    actionType: newActionData.actionType,
+    action: sanitizedAction,
+    co2Saved: co2Val,
+    cashSaved: cashVal,
+    points: ptsVal,
+    timestamp: new Date().toISOString(),
+    impact: newActionData.impact
+  };
+
+  const updatedActions = [newLog, ...loggedActions];
+  const newState = { ...state, loggedActions: updatedActions };
+
+  if (!user || dbFallbackActive) {
+    return { state: newState, firestoreCalled: false, errorOccurred: false };
+  }
+
+  let firestoreCalled = false;
+  let errorOccurred = false;
+
+  try {
+    firestoreCalled = true;
+    await saveToFirestoreMock(user.uid, newLog);
+  } catch {
+    errorOccurred = true;
+  }
+
+  return { state: newState, firestoreCalled, errorOccurred };
 }
