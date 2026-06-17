@@ -153,17 +153,49 @@ npm run preview
 ## 📁 Codebase Layout
 
 ```
-src/
-├── App.tsx             # Application core shell (routing, state context, landing, modules)
-├── components/
-│   └── LivingWorldSimulator.tsx # Extracted biosphere simulation component
-├── index.css           # Design token classes, theme layouts, and keyframe animations
-├── main.tsx            # Entry mount point
-├── utils/
-│   ├── carbonUtils.ts   # Shared carbon math utility functions & simulated state logic
-│   └── carbonUtils.test.ts # Vitest automated unit and integration tests
-└── vite-env.d.ts       # Global TypeScript typing definitions
+├── vite.config.ts                       # Vite + Vitest config (jsdom environment, test setup)
+├── package.json                         # Project manifest (name: "ecoshift")
+├── tsconfig.json                        # TypeScript project references
+├── tsconfig.app.json                    # App-level TS config (strict linting)
+└── src/
+    ├── App.tsx                          # Application shell (routing, state, landing, 17 modules)
+    ├── App.css                          # Component-scoped styles
+    ├── index.css                        # Design tokens, themes, keyframe animations
+    ├── main.tsx                         # React DOM entry mount point
+    ├── vite-env.d.ts                    # Global TypeScript type declarations
+    ├── test/
+    │   └── setup.ts                     # Vitest setup — imports @testing-library/jest-dom matchers
+    ├── components/
+    │   ├── LivingWorldSimulator.tsx      # Biosphere scene component (extracted from App)
+    │   └── LivingWorldSimulator.test.tsx # Component rendering tests (@testing-library/react)
+    └── utils/
+        ├── carbonUtils.ts               # Pure carbon math functions & Firestore fallback logic
+        └── carbonUtils.test.ts          # 18 unit tests + 1 integration test (vitest)
 ```
+
+---
+
+## 🧪 Testing
+
+EcoShift uses [Vitest](https://vitest.dev/) with `jsdom` and [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro/) for both **unit** and **component rendering** tests.
+
+### Running the test suite
+```bash
+npm run test
+```
+
+### Test coverage summary
+| Suite | File | Tests | Description |
+|-------|------|-------|-------------|
+| **Carbon Calculation Logic** | `carbonUtils.test.ts` | 5 | Commute CO₂ savings, fuel cost calculations |
+| **Eco Score & Conversions** | `carbonUtils.test.ts` | 3 | Score formula, trees equivalent, gasoline saved |
+| **Metrics Aggregation** | `carbonUtils.test.ts` | 2 | Empty + populated action list aggregation |
+| **Personalized Insights** | `carbonUtils.test.ts` | 3 | Recommendation engine per action type |
+| **Firestore Offline Fallback** | `carbonUtils.test.ts` | 4 | Offline mode, no-auth, online write, error handling |
+| **Integration Flow** | `carbonUtils.test.ts` | 1 | Full: log action → Eco Score updates → insight appears |
+| **Component Rendering** | `LivingWorldSimulator.test.tsx` | 10 | DOM rendering, zone labels, score display, accessibility |
+
+**Total: 28 tests across 2 test files.**
 
 ---
 
