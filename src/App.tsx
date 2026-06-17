@@ -2105,6 +2105,130 @@ function EcoShiftApp() {
 
         </div>
 
+        {/* CHALLENGE 3 COMPLIANCE & NAVIGATION MATRIX */}
+        <section aria-label="Challenge 3 Compliance & Navigation Matrix" className="w-full bg-[#060a12]/75 border border-emerald-500/20 rounded-2xl p-6 backdrop-blur-md space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-900/60 pb-4 gap-4">
+            <div>
+              <h2 className="text-sm font-extrabold text-white uppercase tracking-wider flex items-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Challenge 3 Compliance &amp; Navigation Matrix</span>
+              </h2>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Official Challenge 3 Goal: "understand, track, and reduce carbon footprint through simple actions and personalized insights"
+              </p>
+            </div>
+            <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-450 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider text-center md:text-left">
+              17 Screens Mapped to Core Pillars
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* UNDERSTAND PILLAR */}
+            <div className="space-y-3 bg-[#080d17]/50 p-4 rounded-xl border border-slate-900/60">
+              <h3 className="text-xs font-black text-emerald-400 uppercase tracking-widest border-b border-slate-800/60 pb-1">
+                1. UNDERSTAND Pillar
+              </h3>
+              <p className="text-[9px] text-slate-400 leading-snug">
+                Helping users comprehend carbon emissions, view real-time calculations, and analyze industrial utility structures.
+              </p>
+              <ul className="space-y-1.5 pt-1 text-[9px]">
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 3] Biosphere Simulator &amp; Scenes</span>
+                </li>
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 6] Industrial Energy Auditor</span>
+                </li>
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 7] Firestore Registry Status</span>
+                </li>
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 13] Footprint Calculator Form</span>
+                </li>
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 14] AI Assistant &amp; Recommendations</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* TRACK PILLAR */}
+            <div className="space-y-3 bg-[#080d17]/50 p-4 rounded-xl border border-slate-900/60">
+              <h3 className="text-xs font-black text-emerald-400 uppercase tracking-widest border-b border-slate-800/60 pb-1">
+                2. TRACK Pillar
+              </h3>
+              <p className="text-[9px] text-slate-400 leading-snug">
+                Enabling granular capture of daily activities, corporate streaks, and multi-user scoreboard standings.
+              </p>
+              <ul className="space-y-1.5 pt-1 text-[9px]">
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 1] App Navigation Sidebar</span>
+                </li>
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 2] Dashboard Overview Stats</span>
+                </li>
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 4] Manual Carbon Ledger Logging</span>
+                </li>
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 5] Transit Commute Tracker</span>
+                </li>
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 10] Retention Streaks Tracker</span>
+                </li>
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 12] Enterprise Leaderboard Scoreboard</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* REDUCE PILLAR */}
+            <div className="space-y-3 bg-[#080d17]/50 p-4 rounded-xl border border-slate-900/60">
+              <h3 className="text-xs font-black text-emerald-400 uppercase tracking-widest border-b border-slate-800/60 pb-1">
+                3. REDUCE Pillar
+              </h3>
+              <p className="text-[9px] text-slate-400 leading-snug">
+                Driving behavioral change through item swap recommendations, secure transactions, and settings adjustments.
+              </p>
+              <ul className="space-y-1.5 pt-1 text-[9px]">
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 8] Behavioral Checkout Sandbox</span>
+                </li>
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 9] Secure OTP Authentication Panel</span>
+                </li>
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 11] Corporate Challenges Grid</span>
+                </li>
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 15] Profile Settings Configuration</span>
+                </li>
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 16] Website Home UI Landing Page</span>
+                </li>
+                <li className="flex items-center space-x-2 text-slate-300">
+                  <span className="text-emerald-500 font-bold">✓</span>
+                  <span>[Screen 17] Website Bottom UI Footer</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
         {/* Feature List Bar */}
         <div className="w-full bg-[#060a12]/70 border border-emerald-500/20 rounded-2xl grid grid-cols-1 lg:grid-cols-5 gap-0 backdrop-blur-md overflow-hidden">
           {/* Column 1: Track & Reduce */}
@@ -3186,6 +3310,31 @@ function EcoShiftApp() {
                 );
               })}
             </nav>
+
+            {/* CHALLENGE 3 COMPLIANCE & NAVIGATION MATRIX CARD */}
+            <div className="px-3 py-2.5 bg-slate-950/70 border border-slate-800/80 rounded-xl space-y-2">
+              <h3 className="text-[10px] font-black text-white uppercase tracking-wider flex items-center space-x-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Challenge 3 Compliance Matrix</span>
+              </h3>
+              <p className="text-[8px] text-slate-400 leading-snug">
+                Mapping 17 screens to official pillars: understand, track, and reduce carbon footprint.
+              </p>
+              <div className="space-y-1.5 text-[8px] pt-1">
+                <div>
+                  <span className="font-extrabold text-emerald-450 uppercase tracking-widest block">1. Understand</span>
+                  <span className="text-slate-400">Screens: 3, 6, 7, 13, 14</span>
+                </div>
+                <div>
+                  <span className="font-extrabold text-emerald-450 uppercase tracking-widest block">2. Track</span>
+                  <span className="text-slate-400">Screens: 1, 2, 4, 5, 10, 12</span>
+                </div>
+                <div>
+                  <span className="font-extrabold text-emerald-450 uppercase tracking-widest block">3. Reduce</span>
+                  <span className="text-slate-400">Screens: 8, 9, 11, 15, 16, 17</span>
+                </div>
+              </div>
+            </div>
             
             {/* Public Portal Navigation */}
             <div className="pt-4 border-t border-slate-800/40">
