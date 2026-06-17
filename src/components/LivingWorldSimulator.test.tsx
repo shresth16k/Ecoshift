@@ -27,29 +27,29 @@ describe('LivingWorldSimulator Component', () => {
     expect(screen.getByText('Eco Score: 65')).toBeInTheDocument();
   });
 
-  it('should show "Sustainable" zone label when score is 65-80', () => {
+  it('should show "Solar Suburban Oasis (Sustainable)" zone label when score is 65-80', () => {
     render(<LivingWorldSimulator {...defaultProps} displayEcoScore={70} />);
-    expect(screen.getByText('Sustainable')).toBeInTheDocument();
+    expect(screen.getByText(/Solar Suburban Oasis/)).toBeInTheDocument();
   });
 
-  it('should show "Degraded Grid" zone label when score is below 45', () => {
+  it('should show "Industrial Smogscape (Degraded Grid)" zone label when score is below 45', () => {
     render(<LivingWorldSimulator {...defaultProps} displayEcoScore={30} />);
-    expect(screen.getByText('Degraded Grid')).toBeInTheDocument();
+    expect(screen.getByText(/Industrial Smogscape/)).toBeInTheDocument();
   });
 
-  it('should show "Utopia" zone label when score exceeds 90', () => {
+  it('should show "Eco-Futurist Utopia (Utopia)" zone label when score exceeds 90', () => {
     render(<LivingWorldSimulator {...defaultProps} displayEcoScore={95} />);
-    expect(screen.getByText('Utopia')).toBeInTheDocument();
+    expect(screen.getByText(/Eco-Futurist Utopia/)).toBeInTheDocument();
   });
 
-  it('should show "Recovering" zone label when score is 45-65', () => {
+  it('should show "Wind-Powered Valley (Recovering)" zone label when score is 45-65', () => {
     render(<LivingWorldSimulator {...defaultProps} displayEcoScore={55} />);
-    expect(screen.getByText('Recovering')).toBeInTheDocument();
+    expect(screen.getByText(/Wind-Powered Valley/)).toBeInTheDocument();
   });
 
-  it('should show "Biodiverse" zone label when score is 80-90', () => {
+  it('should show "Eco-City Future (Biodiverse)" zone label when score is 80-90', () => {
     render(<LivingWorldSimulator {...defaultProps} displayEcoScore={85} />);
-    expect(screen.getByText('Biodiverse')).toBeInTheDocument();
+    expect(screen.getByText(/Eco-City Future/)).toBeInTheDocument();
   });
 
   it('should display the improvement tip', () => {
