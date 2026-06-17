@@ -155,8 +155,13 @@ npm run preview
 ```
 src/
 ├── App.tsx             # Application core shell (routing, state context, landing, modules)
+├── components/
+│   └── LivingWorldSimulator.tsx # Extracted biosphere simulation component
 ├── index.css           # Design token classes, theme layouts, and keyframe animations
 ├── main.tsx            # Entry mount point
+├── utils/
+│   ├── carbonUtils.ts   # Shared carbon math utility functions & simulated state logic
+│   └── carbonUtils.test.ts # Vitest automated unit and integration tests
 └── vite-env.d.ts       # Global TypeScript typing definitions
 ```
 
