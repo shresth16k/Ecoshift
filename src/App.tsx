@@ -378,6 +378,102 @@ function EcoShiftApp() {
   const displayGasoline = useMemo(() => (displayCo2 * 0.4197).toFixed(1), [displayCo2]);
   const displayEcoScore = useMemo(() => Math.min(100, Math.max(60, 65 + Math.floor(displayCo2 / 56.7))), [displayCo2]);
 
+  const categoryPcts = useMemo(() => {
+    if (calcInputs.totalEm > 0) {
+      const travelVal = calcInputs.transportEm;
+      const energyVal = calcInputs.energyEm;
+      const dietVal = calcInputs.dietEm;
+      const total = calcInputs.totalEm;
+      
+      const travelPct = Math.round((travelVal / total) * 100);
+      const energyPct = Math.round((energyVal / total) * 100);
+      const dietPct = Math.round((dietVal / total) * 100);
+      const wastePct = Math.max(0, 100 - travelPct - energyPct - dietPct);
+      
+      return { travel: travelPct, energy: energyPct, diet: dietPct, waste: wastePct };
+    }
+    return { travel: 45, energy: 30, diet: 15, waste: 10 };
+  }, [calcInputs]);
+
+  const dashboardInsights = useMemo(() => {
+    const list: Array<{ id: string; text: string; type: 'success' | 'warning' | 'info' | 'tip' }> = [];
+    
+    if (calcInputs.totalEm > 0) {
+      const differenceText = calcInputs.totalEm < 5 
+        ? "35% lower than the national average! Excellent baseline." 
+        : "15% higher than the national average. Targeted reductions recommended.";
+      list.push({
+        id: 'calc-insight',
+        type: 'info',
+        text: `Baseline: ${calcInputs.totalEm.toFixed(1)} tonnes CO₂e/yr. ${differenceText}`
+      });
+      
+      if (calcInputs.transport === 'car') {
+        list.push({
+          id: 'calc-transport',
+          type: 'warning',
+          text: "Commute Alert: Single-occupant gasoline vehicle is your largest emission source. Try shifting to hybrid/metro."
+        });
+      }
+      if (calcInputs.energy === 'high') {
+        list.push({
+          id: 'calc-energy',
+          type: 'warning',
+          text: "Home Energy Alert: Monthly bill exceeds $80. Run high-draw appliances off-peak to save 0.8 tonnes CO₂."
+        });
+      }
+    } else {
+      list.push({
+        id: 'calc-nudge',
+        type: 'tip',
+        text: "Complete the Carbon Footprint Calculator in the sidebar to generate a precise household baseline."
+      });
+    }
+
+    if (loggedActions.length > 0) {
+      const co2Total = loggedActions.reduce((sum, a) => sum + a.co2Saved, 0);
+      list.push({
+        id: 'logs-summary',
+        type: 'success',
+        text: `Activity Verified: Saved ${co2Total.toFixed(1)}kg CO₂ through ${loggedActions.length} eco-actions. Keep it up!`
+      });
+
+      const hasTransport = loggedActions.some(a => a.actionType === 'Transportation');
+      const hasEnergy = loggedActions.some(a => a.actionType === 'Energy');
+      const hasDiet = loggedActions.some(a => a.actionType === 'Diet');
+
+      if (hasTransport) {
+        list.push({
+          id: 'logs-transport',
+          type: 'success',
+          text: "Transit Shift: Logged low-emission journeys are successfully shielding the atmosphere from commuter emissions."
+        });
+      }
+      if (hasEnergy) {
+        list.push({
+          id: 'logs-energy',
+          type: 'success',
+          text: "Peak-Shaving: Your energy optimization logs minimize strain on gas-fired backup power plants."
+        });
+      }
+      if (hasDiet) {
+        list.push({
+          id: 'logs-diet',
+          type: 'success',
+          text: "Sustainable Diet: Organic plant swaps logged. Scope-3 shipping and farming carbon avoided."
+        });
+      }
+    } else {
+      list.push({
+        id: 'logs-nudge',
+        type: 'tip',
+        text: "Log an active commute, LED bulb swap, or sustainable order swap to generate behavioral analysis."
+      });
+    }
+
+    return list;
+  }, [calcInputs, loggedActions]);
+
 
   // Authentication Sequence Effect (Listen to Firebase Auth status)
   useEffect(() => {
@@ -3485,40 +3581,40 @@ function EcoShiftApp() {
                         <div className="space-y-1">
                           <div className="flex justify-between text-[9px] font-bold text-slate-300">
                             <span>🚗 Travel</span>
-                            <span>45%</span>
+                            <span>{categoryPcts.travel}%</span>
                           </div>
                           <div className="w-full bg-[#101f35] h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-[#10b981] h-full" style={{ width: '45%' }}></div>
+                            <div className="bg-[#10b981] h-full transition-all duration-500" style={{ width: `${categoryPcts.travel}%` }}></div>
                           </div>
                         </div>
                         {/* Energy */}
                         <div className="space-y-1">
                           <div className="flex justify-between text-[9px] font-bold text-slate-300">
                             <span>⚡ Energy</span>
-                            <span>30%</span>
+                            <span>{categoryPcts.energy}%</span>
                           </div>
                           <div className="w-full bg-[#101f35] h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-amber-400 h-full" style={{ width: '30%' }}></div>
+                            <div className="bg-amber-400 h-full transition-all duration-500" style={{ width: `${categoryPcts.energy}%` }}></div>
                           </div>
                         </div>
                         {/* Food */}
                         <div className="space-y-1">
                           <div className="flex justify-between text-[9px] font-bold text-slate-300">
                             <span>🥩 Food</span>
-                            <span>15%</span>
+                            <span>{categoryPcts.diet}%</span>
                           </div>
                           <div className="w-full bg-[#101f35] h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-indigo-400 h-full" style={{ width: '15%' }}></div>
+                            <div className="bg-indigo-400 h-full transition-all duration-500" style={{ width: `${categoryPcts.diet}%` }}></div>
                           </div>
                         </div>
                         {/* Waste */}
                         <div className="space-y-1">
                           <div className="flex justify-between text-[9px] font-bold text-slate-300">
                             <span>♻️ Waste / Other</span>
-                            <span>10%</span>
+                            <span>{categoryPcts.waste}%</span>
                           </div>
                           <div className="w-full bg-[#101f35] h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-blue-400 h-full" style={{ width: '10%' }}></div>
+                            <div className="bg-blue-400 h-full transition-all duration-500" style={{ width: `${categoryPcts.waste}%` }}></div>
                           </div>
                         </div>
                       </div>
@@ -3615,10 +3711,23 @@ function EcoShiftApp() {
                           Insights matching your active habits:
                         </p>
                         
-                        <div className="mt-2 text-[9px] text-amber-300 bg-amber-500/5 border border-amber-500/20 p-2 rounded-lg leading-normal font-medium">
-                          {loggedActions.length > 2 
-                            ? "Commute activity and utility bills verified. Your shift to low-emission transit avoids 4.2kg CO2 daily." 
-                            : "Log your daily habits to generate deep, localized behavioral footprint analysis."}
+                        <div className="mt-2 space-y-2 max-h-[110px] overflow-y-auto pr-1">
+                          {dashboardInsights.map((insight) => (
+                            <div 
+                              key={insight.id} 
+                              className={`text-[8.5px] p-2 rounded-lg leading-normal font-medium border transition-all duration-300 hover:scale-[1.01] ${
+                                insight.type === 'success' 
+                                  ? 'text-emerald-300 bg-emerald-500/5 border-emerald-500/20' 
+                                  : insight.type === 'warning' 
+                                  ? 'text-amber-300 bg-amber-500/5 border-amber-500/20' 
+                                  : insight.type === 'tip'
+                                  ? 'text-sky-300 bg-sky-500/5 border-sky-500/20'
+                                  : 'text-indigo-300 bg-indigo-500/5 border-indigo-500/20'
+                              }`}
+                            >
+                              {insight.text}
+                            </div>
+                          ))}
                         </div>
                       </div>
                       <span className="text-[7.5px] text-slate-500 font-mono block text-right mt-1">
